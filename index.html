@@ -7,6 +7,7 @@
 <title>🎵 Lobby Music Generator — Dragón Primordial</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.min.js"></script>
 <style>
 :root {
   --bg: #070a12;
@@ -138,6 +139,36 @@ header {
 .mood-desc {
   font-size:0.62rem;color:var(--muted);display:block;margin-top:0.2rem;letter-spacing:0.05em;
 }
+.mood-tag {
+  font-size:0.55rem;color:var(--gold);display:block;margin-top:0.3rem;
+  letter-spacing:0.12em;text-transform:uppercase;font-weight:600;
+}
+
+/* ── COVER STRIP ── */
+.cover-strip {
+  display:none;align-items:center;gap:0.8rem;
+  margin-bottom:0.9rem;padding:0.5rem;
+  background:rgba(0,0,0,0.35);border:1px solid var(--border);
+}
+.cover-strip.show { display:flex; }
+.cover-strip img {
+  width:88px;height:50px;object-fit:cover;display:block;
+  border:1px solid var(--border);flex-shrink:0;
+}
+.cover-info { display:flex;flex-direction:column;gap:0.15rem;overflow:hidden; }
+.cover-title {
+  font-family:'Orbitron',sans-serif;font-size:0.68rem;font-weight:700;
+  letter-spacing:0.08em;color:var(--cyan);text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cover-sub {
+  font-size:0.62rem;color:var(--muted);letter-spacing:0.05em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cover-badge {
+  font-size:0.55rem;color:var(--gold);letter-spacing:0.1em;
+  text-transform:uppercase;margin-top:0.1rem;
+}
 
 /* ── CONTROLS ── */
 .control-row {
@@ -234,6 +265,33 @@ canvas#viz { display:block;width:100%;height:120px; }
 .btn-dl:hover:not(:disabled) { background:rgba(0,255,136,0.08);border-color:var(--green); }
 .btn-dl:disabled { opacity:0.3;cursor:not-allowed; }
 
+/* LOOP MP3 EXPORT */
+.loop-row { display:flex;gap:0.6rem; }
+.loop-min-wrap { display:flex;flex-direction:column;gap:0.2rem;width:64px;flex-shrink:0; }
+.loop-min-label {
+  font-size:0.55rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);
+  text-align:center;
+}
+.loop-min-input {
+  width:100%;background:rgba(0,0,0,0.3);border:1px solid var(--border);
+  color:var(--cyan);font-family:'Share Tech Mono',monospace;font-size:0.85rem;
+  padding:0.5rem 0.2rem;text-align:center;outline:none;
+}
+.btn-loop {
+  flex:1;padding:0.7rem 0.5rem;
+  font-family:'Orbitron',sans-serif;font-size:0.68rem;font-weight:700;
+  letter-spacing:0.1em;text-transform:uppercase;border:none;cursor:pointer;
+  transition:all 0.25s;position:relative;overflow:hidden;
+  clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);
+  background:linear-gradient(135deg,#8a5a00,#ffc840);color:#1a1200;
+  box-shadow:0 0 20px rgba(255,200,64,0.2);
+}
+.btn-loop:hover:not(:disabled) { box-shadow:0 0 35px rgba(255,200,64,0.4);transform:translateY(-2px); }
+.btn-loop:disabled { opacity:0.6;cursor:wait;transform:none; }
+.loop-hint {
+  font-size:0.58rem;color:var(--muted);letter-spacing:0.03em;margin-top:-0.3rem;
+}
+
 /* ── INFO ── */
 .info-grid { display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:1rem; }
 .info-cell {
@@ -284,7 +342,7 @@ canvas#viz { display:block;width:100%;height:120px; }
 
 <header>
   <span class="logo">🎵 LOBBY<span> MUSIC GEN</span></span>
-  <span class="header-badge">DRAGÓN PRIMORDIAL · v1.0</span>
+  <span class="header-badge">DRAGÓN PRIMORDIAL · v1.1</span>
 </header>
 
 <div class="app">
@@ -298,8 +356,9 @@ canvas#viz { display:block;width:100%;height:120px; }
       <div class="mood-grid" id="moodGrid">
         <button class="mood-btn active" data-mood="epic" onclick="selectMood(this)">
           <span class="mood-icon">⚔️</span>
-          <span class="mood-name">Épico</span>
-          <span class="mood-desc">Lobby de batalla</span>
+          <span class="mood-name">Despertar de la Batalla</span>
+          <span class="mood-desc">Ambiente épico de combate</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
         </button>
         <button class="mood-btn" data-mood="dark" onclick="selectMood(this)">
           <span class="mood-icon">🌑</span>
@@ -371,6 +430,14 @@ canvas#viz { display:block;width:100%;height:120px; }
     <!-- VISUALIZER -->
     <div class="panel">
       <p class="panel-title">Visualizador</p>
+      <div class="cover-strip" id="coverStrip">
+        <img id="coverImg" src="" alt="Portada del estilo">
+        <div class="cover-info">
+          <span class="cover-title" id="coverTitle"></span>
+          <span class="cover-sub" id="coverSub"></span>
+          <span class="cover-badge" id="coverBadge"></span>
+        </div>
+      </div>
       <div class="visualizer-wrap">
         <canvas id="viz" height="120"></canvas>
         <div class="viz-overlay">
@@ -400,6 +467,14 @@ canvas#viz { display:block;width:100%;height:120px; }
           <button class="btn-small btn-rec" id="recBtn" onclick="toggleRecord()">⏺ GRABAR</button>
           <button class="btn-small btn-dl" id="dlBtn" onclick="downloadAudio()" disabled>⬇ DESCARGAR</button>
         </div>
+        <div class="loop-row">
+          <div class="loop-min-wrap">
+            <span class="loop-min-label">Min</span>
+            <input type="number" id="loopMinutes" class="loop-min-input" value="2" min="0.5" max="10" step="0.5">
+          </div>
+          <button class="btn-loop" id="loopBtn" onclick="saveLoopAsMp3()">💾 Guardar Loop (MP3)</button>
+        </div>
+        <div class="loop-hint">Renderiza el estilo actual — no necesitas presionar Play primero.</div>
       </div>
     </div>
 
@@ -438,7 +513,9 @@ let reverb, delay, vol;
 // Mood configs
 const MOODS = {
   epic: {
-    name:'Épico', key:'A min', time:'4/4', bpm:110,
+    name:'Despertar de la Batalla', key:'A min', time:'4/4', bpm:110,
+    subtitle:'Ambiente Épico de Combate', tag:'Loop · Sin copyright',
+    cover:'images/despertar-de-la-batalla.jpg',
     scale:['A3','C4','D4','E4','G4','A4','C5','E5'],
     bassNotes:['A2','E2','C2','G2'],
     melodyRhythm:['8n','8n','4n','8n','8n','2n'],
@@ -524,8 +601,20 @@ function selectMood(el) {
   document.getElementById('info-bpm').textContent = m.bpm;
   document.getElementById('tempo').value = m.bpm;
   document.getElementById('val-tempo').textContent = m.bpm;
-  log(`Estilo seleccionado: ${m.name} · ${m.key} · ${m.bpm} BPM`, 'info');
+  const tagPart = m.tag ? ` · ${m.tag}` : '';
+  log(`Estilo seleccionado: ${m.name} · ${m.key} · ${m.bpm} BPM${tagPart}`, 'info');
+  updateCoverStrip(m);
   if(isPlaying) { stopMusic(); startMusic(); }
+}
+
+function updateCoverStrip(m) {
+  const strip = document.getElementById('coverStrip');
+  if(!m.cover) { strip.classList.remove('show'); return; }
+  document.getElementById('coverImg').src = m.cover;
+  document.getElementById('coverTitle').textContent = m.name;
+  document.getElementById('coverSub').textContent = m.subtitle || '';
+  document.getElementById('coverBadge').textContent = m.tag || '';
+  strip.classList.add('show');
 }
 
 function updateParam(param, val) {
@@ -804,6 +893,163 @@ function downloadAudio() {
   log(`Descargando: ${a.download}`, 'ok');
 }
 
+// ─── GUARDAR LOOP (RENDER OFFLINE → MP3) ─────────────────
+// No depende de estar reproduciendo: renderiza el estilo actual
+// completo (incluyendo capas y parámetros) en un contexto de audio
+// offline y lo codifica a MP3 real con lamejs, todo en el navegador.
+let isRendering = false;
+
+async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetRaw, delayWetRaw) {
+  // Se ejecuta DENTRO del callback de Tone.Offline: Tone usa el
+  // contexto offline de forma automática mientras corre este código.
+  const m = MOODS[moodKey];
+  Tone.getTransport().bpm.value = tempoBpm;
+
+  const oVol = new Tone.Volume(volumeDb);
+  const oReverb = new Tone.Reverb({ decay:3.5, preDelay:0.1, wet:reverbWetRaw/10 });
+  const oDelay = new Tone.FeedbackDelay({ delayTime:'8n', feedback:0.25, wet:delayWetRaw/10 });
+  const oLimiter = new Tone.Limiter(-3);
+  await oReverb.generate();
+  oVol.chain(oReverb, oDelay, oLimiter, Tone.getDestination());
+
+  if(layers.pad) {
+    const padSynth = new Tone.PolySynth(Tone.Synth, {
+      oscillator:{type:'sine'}, envelope:{attack:0.8,decay:0.2,sustain:0.9,release:2}, volume:-14
+    }).connect(oVol);
+    let pi=0;
+    new Tone.Sequence((time)=>{
+      padSynth.triggerAttackRelease(m.padNotes[pi%m.padNotes.length], '2n', time); pi++;
+    }, [0,1,2,3], '2n').start(0);
+  }
+  if(layers.bass) {
+    const bassSynth = new Tone.Synth({
+      oscillator:{type:'sawtooth'}, envelope:{attack:0.04,decay:0.1,sustain:0.8,release:0.3}, volume:-10
+    }).connect(oVol);
+    let bi=0;
+    new Tone.Sequence((time)=>{
+      bassSynth.triggerAttackRelease(m.bassNotes[bi%m.bassNotes.length], '4n', time); bi++;
+    }, [0,1,2,3], '4n').start(0);
+  }
+  if(layers.melody) {
+    const melSynth = new Tone.Synth({
+      oscillator:{type:'triangle'}, envelope:{attack:0.05,decay:0.2,sustain:0.6,release:0.4}, volume:-8
+    }).connect(oVol);
+    const melNotes = m.scale;
+    const seq = [];
+    for(let i=0;i<8;i++) seq.push(melNotes[Math.floor(Math.random()*melNotes.length)]);
+    new Tone.Sequence((time, note)=>{
+      melSynth.triggerAttackRelease(note, m.melodyRhythm[Math.floor(Math.random()*m.melodyRhythm.length)], time);
+    }, seq, '8n').start(0);
+  }
+  if(layers.drums) {
+    const kick = new Tone.MembraneSynth({volume:-4}).connect(oVol);
+    const snare = new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:0.005,decay:0.12,sustain:0,release:0.1},volume:-10}).connect(oVol);
+    const hihat = new Tone.MetalSynth({frequency:400,envelope:{attack:0.001,decay:0.05,release:0.01},harmonicity:5.1,modulationIndex:32,resonance:4000,octaves:1.5,volume:-18}).connect(oVol);
+    const pat = m.drumPattern;
+    let di=0;
+    new Tone.Sequence((time)=>{
+      const idx = di % pat.length;
+      if(pat[idx]) kick.triggerAttackRelease('C1','8n',time);
+      if(pat[(idx+4)%pat.length]) snare.triggerAttackRelease('8n',time);
+      if(di%2===0) hihat.triggerAttackRelease('32n',time);
+      di++;
+    }, [...Array(16).keys()], '16n').start(0);
+  }
+  if(layers.arp) {
+    const arpSynth = new Tone.Synth({
+      oscillator:{type:'square'}, envelope:{attack:0.01,decay:0.1,sustain:0.3,release:0.2}, volume:-16
+    }).connect(oVol);
+    let ai=0;
+    new Tone.Sequence((time)=>{
+      arpSynth.triggerAttackRelease(m.arpNotes[ai%m.arpNotes.length],'16n',time); ai++;
+    }, [0,1,2,3], '16n').start(0);
+  }
+
+  Tone.getTransport().start();
+}
+
+function encodeToneBufferToMp3(toneBuffer) {
+  const sampleRate = toneBuffer.sampleRate;
+  const left = toneBuffer.getChannelData(0);
+  const right = toneBuffer.numberOfChannels > 1 ? toneBuffer.getChannelData(1) : left;
+
+  const toInt16 = (f32) => {
+    const out = new Int16Array(f32.length);
+    for(let i=0;i<f32.length;i++){
+      const s = Math.max(-1, Math.min(1, f32[i]));
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return out;
+  };
+  const leftI16 = toInt16(left);
+  const rightI16 = toInt16(right);
+
+  const encoder = new lamejs.Mp3Encoder(2, sampleRate, 192);
+  const blockSize = 1152;
+  const mp3Chunks = [];
+  for(let i=0; i<leftI16.length; i+=blockSize) {
+    const lChunk = leftI16.subarray(i, i+blockSize);
+    const rChunk = rightI16.subarray(i, i+blockSize);
+    const buf = encoder.encodeBuffer(lChunk, rChunk);
+    if(buf.length>0) mp3Chunks.push(buf);
+  }
+  const endBuf = encoder.flush();
+  if(endBuf.length>0) mp3Chunks.push(endBuf);
+
+  return new Blob(mp3Chunks, {type:'audio/mp3'});
+}
+
+async function saveLoopAsMp3() {
+  if(isRendering) return;
+  const minutesInput = document.getElementById('loopMinutes');
+  const minutes = Math.max(0.5, Math.min(10, parseFloat(minutesInput.value) || 2));
+  minutesInput.value = minutes;
+  const durationSec = Math.round(minutes * 60);
+
+  const btn = document.getElementById('loopBtn');
+  const originalText = btn.textContent;
+  isRendering = true;
+  btn.disabled = true;
+  btn.textContent = '⏳ RENDERIZANDO...';
+  const m = MOODS[currentMood];
+  log(`Renderizando loop de ${minutes} min — ${m.name}...`, 'warn');
+
+  try {
+    await Tone.start();
+    const tempo = parseInt(document.getElementById('tempo').value);
+    const volumeDb = parseFloat(document.getElementById('volume').value);
+    const reverbWetRaw = parseFloat(document.getElementById('reverb').value);
+    const delayWetRaw = parseFloat(document.getElementById('delay').value);
+    const mood = currentMood;
+
+    const buffer = await Tone.Offline(async () => {
+      await buildMoodInOfflineContext(mood, tempo, volumeDb, reverbWetRaw, delayWetRaw);
+    }, durationSec);
+
+    btn.textContent = '⏳ CODIFICANDO MP3...';
+    log('Render completo. Codificando a MP3...', 'warn');
+
+    const mp3Blob = encodeToneBufferToMp3(buffer);
+    const url = URL.createObjectURL(mp3Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const slug = m.name.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+    a.download = `${slug}_loop_${minutes}min_${Date.now()}.mp3`;
+    a.click();
+    URL.revokeObjectURL(url);
+    log(`Loop guardado: ${a.download}`, 'ok');
+  } catch(e) {
+    console.error(e);
+    log('Error al generar el loop: '+e.message, 'warn');
+  } finally {
+    isRendering = false;
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
 // ─── INIT ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const m = MOODS[currentMood];
@@ -811,7 +1057,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('info-key').textContent = m.key;
   document.getElementById('info-time').textContent = m.time;
   document.getElementById('info-bpm').textContent = m.bpm;
+  updateCoverStrip(m);
   log('Sistema listo. Selecciona un estilo y presiona PLAY.', 'info');
+  log('Nuevo: Guardar Loop (MP3) exporta el estilo actual sin tener que reproducirlo.', 'ok');
 });
 </script>
 </body>
