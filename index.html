@@ -399,6 +399,18 @@ canvas#viz { display:block;width:100%;height:120px; }
           <span class="mood-desc">Ambiente épico de combate</span>
           <span class="mood-tag">Loop · Sin copyright</span>
         </button>
+        <button class="mood-btn" data-mood="mystical" onclick="selectMood(this)">
+          <span class="mood-icon">🌅</span>
+          <span class="mood-name">Antes de la Batalla</span>
+          <span class="mood-desc">Ambiente épico de lobby</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
+        </button>
+        <button class="mood-btn" data-mood="impact" onclick="selectMood(this)">
+          <span class="mood-icon">💥</span>
+          <span class="mood-name">Impacto Brutal</span>
+          <span class="mood-desc">Golpe de combate</span>
+          <span class="mood-tag">Sonido · Sin copyright</span>
+        </button>
         <button class="mood-btn" data-mood="dark" onclick="selectMood(this)">
           <span class="mood-icon">🌑</span>
           <span class="mood-name">Oscuro</span>
@@ -413,12 +425,6 @@ canvas#viz { display:block;width:100%;height:120px; }
           <span class="mood-icon">⚡</span>
           <span class="mood-name">Tensión</span>
           <span class="mood-desc">Pre-combate</span>
-        </button>
-        <button class="mood-btn" data-mood="mystical" onclick="selectMood(this)">
-          <span class="mood-icon">🌅</span>
-          <span class="mood-name">Antes de la Batalla</span>
-          <span class="mood-desc">Ambiente épico de lobby</span>
-          <span class="mood-tag">Loop · Sin copyright</span>
         </button>
         <button class="mood-btn" data-mood="victory" onclick="selectMood(this)">
           <span class="mood-icon">🏆</span>
@@ -600,6 +606,14 @@ const MOODS = {
     arpNotes:['A4','C5','E5','G5'],
     colors:['#0080ff','#00c8ff','#4040ff'],
   },
+  impact: {
+    name:'Impacto Brutal', key:'—', time:'—', bpm:'—',
+    subtitle:'Golpe de Combate', tag:'Sonido · Sin copyright',
+    cover:'images/impacto-brutal.jpg',
+    type:'oneshot',
+    audio:'audio/pattala-impacto-brutal.mp3',
+    colors:['#ff2a2a','#ff6a00','#ffffff'],
+  },
   dark: {
     name:'Oscuro', key:'D min', time:'3/4', bpm:72,
     scale:['D3','F3','G3','A3','C4','D4','F4','A4'],
@@ -673,16 +687,32 @@ function selectMood(el) {
   el.classList.add('active');
   currentMood = el.dataset.mood;
   const m = MOODS[currentMood];
+  const isOneshot = m.type === 'oneshot';
+
   document.getElementById('info-mood').textContent = m.name;
   document.getElementById('info-key').textContent = m.key;
   document.getElementById('info-time').textContent = m.time;
   document.getElementById('info-bpm').textContent = m.bpm;
-  document.getElementById('tempo').value = m.bpm;
-  document.getElementById('val-tempo').textContent = m.bpm;
+  if(typeof m.bpm === 'number') {
+    document.getElementById('tempo').value = m.bpm;
+    document.getElementById('val-tempo').textContent = m.bpm;
+  }
+
   const tagPart = m.tag ? ` · ${m.tag}` : '';
-  log(`Estilo seleccionado: ${m.name} · ${m.key} · ${m.bpm} BPM${tagPart}`, 'info');
+  log(`Estilo seleccionado: ${m.name}${m.key !== '—' ? ' · '+m.key : ''}${typeof m.bpm==='number' ? ' · '+m.bpm+' BPM' : ''}${tagPart}`, 'info');
   updateCoverStrip(m);
-  if(isPlaying) { stopMusic(); startMusic(); }
+
+  // Adaptar controles según el tipo de sonido (generativo vs. one-shot)
+  const playBtn = document.getElementById('playBtn');
+  const loopBtn = document.getElementById('loopBtn');
+  const loopMinutes = document.getElementById('loopMinutes');
+  const recBtn = document.getElementById('recBtn');
+  if(!isPlaying) playBtn.textContent = isOneshot ? '💥 REPRODUCIR SONIDO' : '▶ GENERAR Y REPRODUCIR';
+  loopBtn.textContent = isOneshot ? '💾 Descargar Sonido (MP3)' : '💾 Guardar Loop (MP3)';
+  loopMinutes.disabled = isOneshot;
+  recBtn.disabled = isOneshot;
+
+  if(isPlaying && !isOneshot) { stopMusic(); startMusic(); }
 }
 
 function updateCoverStrip(m) {
@@ -888,6 +918,9 @@ function stopMusic() {
 }
 
 async function togglePlay() {
+  const m = MOODS[currentMood];
+  if(m.type === 'oneshot') { playOneshotSound(m); return; }
+
   const btn = document.getElementById('playBtn');
   if(!isPlaying) {
     isPlaying = true;
@@ -909,6 +942,18 @@ async function togglePlay() {
     stopTimer();
     log('Reproducción detenida.','warn');
   }
+}
+
+function playOneshotSound(m) {
+  const moodKeyAtPlay = currentMood;
+  const audio = new Audio(m.audio);
+  audio.play().catch(e => log('No se pudo reproducir: '+e.message, 'warn'));
+  const status = document.getElementById('vizStatus');
+  status.textContent = '💥 REPRODUCIENDO...';
+  log(`Reproduciendo: ${m.name}`, 'ok');
+  setTimeout(() => {
+    if(currentMood === moodKeyAtPlay) status.textContent = '— PRESIONA PLAY —';
+  }, 1500);
 }
 
 // ─── TIMER ──────────────────────────────────────────────
@@ -1077,8 +1122,21 @@ function encodeToneBufferToMp3(toneBuffer) {
   return new Blob(mp3Chunks, {type:'audio/mp3'});
 }
 
+function downloadOneshotFile(m) {
+  const a = document.createElement('a');
+  a.href = m.audio;
+  a.download = 'pattala_impacto_brutal.mp3';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  log(`Descargando: ${a.download}`, 'ok');
+}
+
 async function saveLoopAsMp3() {
   if(isRendering) return;
+  const m0 = MOODS[currentMood];
+  if(m0.type === 'oneshot') { downloadOneshotFile(m0); return; }
+
   const minutesInput = document.getElementById('loopMinutes');
   const minutes = Math.max(0.5, Math.min(10, parseFloat(minutesInput.value) || 2));
   minutesInput.value = minutes;
