@@ -73,8 +73,44 @@ header {
   border:1px solid var(--border);
   padding:0.3rem 0.8rem;
 }
+.yt-badge {
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.65rem;letter-spacing:0.15em;
+  color:var(--red);
+  border:1px solid rgba(255,60,80,0.3);
+  padding:0.3rem 0.7rem;text-decoration:none;
+  transition:all 0.2s;
+}
+.yt-badge:hover { background:rgba(255,60,80,0.08);border-color:var(--red); }
 
-/* ── MAIN LAYOUT ── */
+/* ── CATÁLOGO DE SONIDOS ── */
+.catalog-wrap { max-width:1100px;margin:0 auto;padding:0 1.5rem 3rem;position:relative;z-index:1; }
+.catalog-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:0.8rem; }
+@media (max-width:820px) { .catalog-grid { grid-template-columns:1fr; } }
+.catalog-card {
+  background:rgba(0,0,0,0.25);border:1px solid var(--border);
+  overflow:hidden;display:flex;flex-direction:column;
+}
+.catalog-card img { width:100%;height:110px;object-fit:cover;display:block; }
+.catalog-body { padding:0.9rem 1rem; }
+.catalog-title {
+  font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;
+  letter-spacing:0.04em;color:var(--cyan);margin-bottom:0.5rem;line-height:1.4;
+}
+.catalog-desc { font-size:0.75rem;color:var(--text);line-height:1.55; }
+.catalog-badge {
+  display:inline-block;margin-top:0.6rem;font-size:0.55rem;
+  letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);
+  border:1px solid rgba(255,200,64,0.3);padding:0.25rem 0.55rem;
+}
+.credit-line {
+  text-align:center;font-size:0.68rem;color:var(--muted);
+  margin-top:1.3rem;letter-spacing:0.03em;
+}
+.credit-line a { color:var(--cyan);text-decoration:none;border-bottom:1px dotted var(--cyan-dim); }
+.credit-line a:hover { color:#fff; }
+
+
 .app {
   position:relative;z-index:1;
   max-width:1100px;margin:0 auto;
@@ -342,7 +378,10 @@ canvas#viz { display:block;width:100%;height:120px; }
 
 <header>
   <span class="logo">🎵 LOBBY<span> MUSIC GEN</span></span>
-  <span class="header-badge">DRAGÓN PRIMORDIAL · v1.1</span>
+  <div style="display:flex;align-items:center;gap:0.6rem;">
+    <a class="yt-badge" href="https://www.youtube.com/@Drag%C3%B3nPrimordial" target="_blank" rel="noopener">▶ YouTube</a>
+    <span class="header-badge">DRAGÓN PRIMORDIAL · v1.2</span>
+  </div>
 </header>
 
 <div class="app">
@@ -376,9 +415,10 @@ canvas#viz { display:block;width:100%;height:120px; }
           <span class="mood-desc">Pre-combate</span>
         </button>
         <button class="mood-btn" data-mood="mystical" onclick="selectMood(this)">
-          <span class="mood-icon">🔮</span>
-          <span class="mood-name">Místico</span>
-          <span class="mood-desc">Magia / portal</span>
+          <span class="mood-icon">🌅</span>
+          <span class="mood-name">Antes de la Batalla</span>
+          <span class="mood-desc">Ambiente épico de lobby</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
         </button>
         <button class="mood-btn" data-mood="victory" onclick="selectMood(this)">
           <span class="mood-icon">🏆</span>
@@ -490,6 +530,42 @@ canvas#viz { display:block;width:100%;height:120px; }
   </div>
 </div>
 
+<div class="catalog-wrap">
+  <div class="panel">
+    <p class="panel-title">Catálogo de Sonidos — Bestias: Génesis</p>
+    <div class="catalog-grid">
+      <div class="catalog-card">
+        <img src="images/despertar-de-la-batalla.jpg" alt="Despertar de la Batalla">
+        <div class="catalog-body">
+          <div class="catalog-title">🎵 Bestias: Génesis — Despertar de la Batalla</div>
+          <div class="catalog-desc">🔥 Ambiente épico de combate para entrar en acción. Loop sin copyright, ideal para batallas y enfrentamientos.</div>
+          <span class="catalog-badge">Generalo arriba ↑</span>
+        </div>
+      </div>
+      <div class="catalog-card">
+        <img src="images/antes-de-la-batalla.jpg" alt="Antes de la Batalla">
+        <div class="catalog-body">
+          <div class="catalog-title">🌅 Bestias: Génesis — Antes de la Batalla</div>
+          <div class="catalog-desc">🌄 Ambiente épico de espera para el lobby. Una melodía que prepara al jugador para comenzar su aventura.</div>
+          <span class="catalog-badge">Generalo arriba ↑</span>
+        </div>
+      </div>
+      <div class="catalog-card">
+        <img src="images/impacto-brutal.jpg" alt="Impacto Brutal">
+        <div class="catalog-body">
+          <div class="catalog-title">💥 Bestias: Génesis — Impacto Brutal</div>
+          <div class="catalog-desc">🐾 Golpe contundente y poderoso para ataques, habilidades y momentos de impacto.</div>
+          <span class="catalog-badge">Disponible en BuiltByBit</span>
+        </div>
+      </div>
+    </div>
+    <div class="credit-line">
+      🎥 Todo el audio de este catálogo es 100% original, creado por <strong>Dragón Primordial</strong> —
+      <a href="https://www.youtube.com/@Drag%C3%B3nPrimordial" target="_blank" rel="noopener">YouTube</a>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── STATE ───────────────────────────────────────────────
 let isPlaying = false;
@@ -555,7 +631,9 @@ const MOODS = {
     colors:['#ff8000','#ff4000','#ffc000'],
   },
   mystical: {
-    name:'Místico', key:'C# min', time:'4/4', bpm:85,
+    name:'Antes de la Batalla', key:'C# min', time:'4/4', bpm:85,
+    subtitle:'Ambiente Épico de Lobby', tag:'Loop · Sin copyright',
+    cover:'images/antes-de-la-batalla.jpg',
     scale:['C#4','E4','F#4','G#4','B4','C#5','E5','G#5'],
     bassNotes:['C#2','G#2','F#2','B2'],
     melodyRhythm:['4n','8n','4n','8n','2n','4n'],
