@@ -380,7 +380,7 @@ canvas#viz { display:block;width:100%;height:120px; }
   <span class="logo">🎵 LOBBY<span> MUSIC GEN</span></span>
   <div style="display:flex;align-items:center;gap:0.6rem;">
     <a class="yt-badge" href="https://www.youtube.com/@Drag%C3%B3nPrimordial" target="_blank" rel="noopener">▶ YouTube</a>
-    <span class="header-badge">DRAGÓN PRIMORDIAL · v1.3</span>
+    <span class="header-badge">DRAGÓN PRIMORDIAL · v1.4</span>
   </div>
 </header>
 
@@ -413,23 +413,39 @@ canvas#viz { display:block;width:100%;height:120px; }
         </button>
         <button class="mood-btn" data-mood="dark" onclick="selectMood(this)">
           <span class="mood-icon">🌑</span>
-          <span class="mood-name">Oscuro</span>
-          <span class="mood-desc">Mazmorra / misterio</span>
+          <span class="mood-name">Cripta de las Sombras</span>
+          <span class="mood-desc">Misterio y peligro</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
         </button>
         <button class="mood-btn" data-mood="chill" onclick="selectMood(this)">
           <span class="mood-icon">🌿</span>
-          <span class="mood-name">Tranquilo</span>
-          <span class="mood-desc">Aldea / descanso</span>
+          <span class="mood-name">Santuario de las Bestias</span>
+          <span class="mood-desc">Calma y exploración</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
         </button>
         <button class="mood-btn" data-mood="tension" onclick="selectMood(this)">
           <span class="mood-icon">⚡</span>
-          <span class="mood-name">Tensión</span>
-          <span class="mood-desc">Pre-combate</span>
+          <span class="mood-name">El Cazador Acecha</span>
+          <span class="mood-desc">Tensión previa al combate</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
         </button>
         <button class="mood-btn" data-mood="victory" onclick="selectMood(this)">
           <span class="mood-icon">🏆</span>
-          <span class="mood-name">Victoria</span>
-          <span class="mood-desc">Pantalla de logros</span>
+          <span class="mood-name">Gloria del Vencedor</span>
+          <span class="mood-desc">Triunfo y celebración</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
+        </button>
+        <button class="mood-btn" data-mood="corruption" onclick="selectMood(this)">
+          <span class="mood-icon">🩸</span>
+          <span class="mood-name">Corrupción de las Bestias</span>
+          <span class="mood-desc">Ambiente agresivo y distorsionado</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
+        </button>
+        <button class="mood-btn" data-mood="crystal" onclick="selectMood(this)">
+          <span class="mood-icon">💎</span>
+          <span class="mood-name">Templo de Cristal</span>
+          <span class="mood-desc">Ambiente etéreo y mágico</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
         </button>
       </div>
     </div>
@@ -624,7 +640,8 @@ const MOODS = {
     colors:['#ff2a2a','#ff6a00','#ffffff'],
   },
   dark: {
-    name:'Oscuro', key:'D min', time:'3/4', bpm:72,
+    name:'Cripta de las Sombras', key:'D min', time:'3/4', bpm:72,
+    subtitle:'Misterio y Peligro', tag:'Loop · Sin copyright',
     scale:['D3','F3','G3','A3','C4','D4','F4','A4'],
     bassNotes:['D2','A2','F2','C2'],
     melodyRhythm:['4n','4n','2n','4n','4n','4n'],
@@ -634,7 +651,8 @@ const MOODS = {
     colors:['#6020c0','#9040e0','#4010a0'],
   },
   chill: {
-    name:'Tranquilo', key:'G maj', time:'4/4', bpm:75,
+    name:'Santuario de las Bestias', key:'G maj', time:'4/4', bpm:75,
+    subtitle:'Calma y Exploración', tag:'Loop · Sin copyright',
     scale:['G4','A4','B4','D5','E5','G5','B5','D6'],
     bassNotes:['G2','D2','C2','E2'],
     melodyRhythm:['4n','8n','8n','2n','4n','4n'],
@@ -644,7 +662,8 @@ const MOODS = {
     colors:['#00c870','#00e880','#40ff90'],
   },
   tension: {
-    name:'Tensión', key:'E min', time:'4/4', bpm:130,
+    name:'El Cazador Acecha', key:'E min', time:'4/4', bpm:130,
+    subtitle:'Tensión Previa al Combate', tag:'Loop · Sin copyright',
     scale:['E3','G3','A3','B3','D4','E4','G4','B4'],
     bassNotes:['E2','B2','A2','D2'],
     melodyRhythm:['16n','16n','8n','16n','16n','16n'],
@@ -666,7 +685,8 @@ const MOODS = {
     colors:['#c040ff','#8020c0','#ff60ff'],
   },
   victory: {
-    name:'Victoria', key:'C maj', time:'4/4', bpm:120,
+    name:'Gloria del Vencedor', key:'C maj', time:'4/4', bpm:120,
+    subtitle:'Triunfo y Celebración', tag:'Loop · Sin copyright',
     scale:['C4','E4','G4','A4','C5','E5','G5','C6'],
     bassNotes:['C2','G2','F2','A2'],
     melodyRhythm:['8n','8n','8n','4n','8n','4n'],
@@ -674,6 +694,30 @@ const MOODS = {
     drumPattern:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1],
     arpNotes:['C5','E5','G5','C6'],
     colors:['#ffd700','#ff8c00','#ffec60'],
+  },
+  corruption: {
+    name:'Corrupción de las Bestias', key:'E phryg', time:'4/4', bpm:135,
+    subtitle:'Bestias Corrompidas', tag:'Loop · Sin copyright',
+    scale:['E3','F3','G3','A3','B3','C4','D4','E4'],
+    bassNotes:['E2','F2','E2','B1'],
+    bassOsc:'sawtooth', distortion:0.5,
+    melodyRhythm:['16n','8n','16n','8n','4n'],
+    padNotes:[['E2','G2','B2'],['F2','A2','C3'],['E2','G2','B2'],['D2','F2','A2']],
+    drumPattern:[1,1,0,1,1,0,1,1,0,1,1,0,1,1,1,0],
+    arpNotes:['E4','F4','G4','B4'],
+    colors:['#8a0000','#ff2200','#1a0000'],
+  },
+  crystal: {
+    name:'Templo de Cristal', key:'D lyd', time:'4/4', bpm:65,
+    subtitle:'Santuario Ancestral', tag:'Loop · Sin copyright',
+    scale:['D4','E4','F#4','G#4','A4','B4','C#5','D5'],
+    bassNotes:['D2','A1','F#1','C#2'],
+    padOsc:'sine', melodyOsc:'sine', arpOsc:'sine',
+    melodyRhythm:['2n','4n','2n','1n'],
+    padNotes:[['D2','F#2','A2'],['B1','D2','F#2'],['G1','B1','D2'],['A1','C#2','E2']],
+    drumPattern:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+    arpNotes:['D5','F#5','A5','C#6'],
+    colors:['#40e0ff','#a0f0ff','#ffffff'],
   },
 };
 
@@ -828,7 +872,7 @@ async function startMusic() {
   // ── PAD ──
   if(layers.pad) {
     const padSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator:{type:'sine'},
+      oscillator:{type:m.padOsc || 'sine'},
       envelope:{attack:0.8,decay:0.2,sustain:0.9,release:2},
       volume:-14
     }).connect(vol);
@@ -844,10 +888,16 @@ async function startMusic() {
   // ── BASS ──
   if(layers.bass) {
     const bassSynth = new Tone.Synth({
-      oscillator:{type:'sawtooth'},
+      oscillator:{type:m.bassOsc || 'sawtooth'},
       envelope:{attack:0.04,decay:0.1,sustain:0.8,release:0.3},
       volume:-10
-    }).connect(vol);
+    });
+    if(m.distortion) {
+      const bassDist = new Tone.Distortion(m.distortion).connect(vol);
+      bassSynth.connect(bassDist);
+    } else {
+      bassSynth.connect(vol);
+    }
     synths.bass = bassSynth;
     let bi=0;
     parts.bass = new Tone.Sequence((time)=>{
@@ -860,7 +910,7 @@ async function startMusic() {
   // ── MELODY ──
   if(layers.melody) {
     const melSynth = new Tone.Synth({
-      oscillator:{type:'triangle'},
+      oscillator:{type:m.melodyOsc || 'triangle'},
       envelope:{attack:0.05,decay:0.2,sustain:0.6,release:0.4},
       volume:-8
     }).connect(vol);
@@ -895,7 +945,7 @@ async function startMusic() {
   // ── ARP ──
   if(layers.arp) {
     const arpSynth = new Tone.Synth({
-      oscillator:{type:'square'},
+      oscillator:{type:m.arpOsc || 'square'},
       envelope:{attack:0.01,decay:0.1,sustain:0.3,release:0.2},
       volume:-16
     }).connect(vol);
@@ -1046,7 +1096,7 @@ async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetR
 
   if(layers.pad) {
     const padSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator:{type:'sine'}, envelope:{attack:0.8,decay:0.2,sustain:0.9,release:2}, volume:-14
+      oscillator:{type:m.padOsc || 'sine'}, envelope:{attack:0.8,decay:0.2,sustain:0.9,release:2}, volume:-14
     }).connect(oVol);
     let pi=0;
     new Tone.Sequence((time)=>{
@@ -1055,8 +1105,14 @@ async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetR
   }
   if(layers.bass) {
     const bassSynth = new Tone.Synth({
-      oscillator:{type:'sawtooth'}, envelope:{attack:0.04,decay:0.1,sustain:0.8,release:0.3}, volume:-10
-    }).connect(oVol);
+      oscillator:{type:m.bassOsc || 'sawtooth'}, envelope:{attack:0.04,decay:0.1,sustain:0.8,release:0.3}, volume:-10
+    });
+    if(m.distortion) {
+      const bassDist = new Tone.Distortion(m.distortion).connect(oVol);
+      bassSynth.connect(bassDist);
+    } else {
+      bassSynth.connect(oVol);
+    }
     let bi=0;
     new Tone.Sequence((time)=>{
       bassSynth.triggerAttackRelease(m.bassNotes[bi%m.bassNotes.length], '4n', time); bi++;
@@ -1064,7 +1120,7 @@ async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetR
   }
   if(layers.melody) {
     const melSynth = new Tone.Synth({
-      oscillator:{type:'triangle'}, envelope:{attack:0.05,decay:0.2,sustain:0.6,release:0.4}, volume:-8
+      oscillator:{type:m.melodyOsc || 'triangle'}, envelope:{attack:0.05,decay:0.2,sustain:0.6,release:0.4}, volume:-8
     }).connect(oVol);
     const melNotes = m.scale;
     const seq = [];
@@ -1089,7 +1145,7 @@ async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetR
   }
   if(layers.arp) {
     const arpSynth = new Tone.Synth({
-      oscillator:{type:'square'}, envelope:{attack:0.01,decay:0.1,sustain:0.3,release:0.2}, volume:-16
+      oscillator:{type:m.arpOsc || 'square'}, envelope:{attack:0.01,decay:0.1,sustain:0.3,release:0.2}, volume:-16
     }).connect(oVol);
     let ai=0;
     new Tone.Sequence((time)=>{
