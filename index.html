@@ -85,7 +85,7 @@ header {
 
 /* ── CATÁLOGO DE SONIDOS ── */
 .catalog-wrap { max-width:1100px;margin:0 auto;padding:0 1.5rem 3rem;position:relative;z-index:1; }
-.catalog-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:0.8rem; }
+.catalog-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-top:0.8rem; }
 @media (max-width:820px) { .catalog-grid { grid-template-columns:1fr; } }
 .catalog-card {
   background:rgba(0,0,0,0.25);border:1px solid var(--border);
@@ -380,7 +380,7 @@ canvas#viz { display:block;width:100%;height:120px; }
   <span class="logo">🎵 LOBBY<span> MUSIC GEN</span></span>
   <div style="display:flex;align-items:center;gap:0.6rem;">
     <a class="yt-badge" href="https://www.youtube.com/@Drag%C3%B3nPrimordial" target="_blank" rel="noopener">▶ YouTube</a>
-    <span class="header-badge">DRAGÓN PRIMORDIAL · v1.4</span>
+    <span class="header-badge">DRAGÓN PRIMORDIAL · v1.6</span>
   </div>
 </header>
 
@@ -406,9 +406,15 @@ canvas#viz { display:block;width:100%;height:120px; }
           <span class="mood-tag">Loop · Sin copyright</span>
         </button>
         <button class="mood-btn" data-mood="impact" onclick="selectMood(this)">
+          <span class="mood-icon">🥁</span>
+          <span class="mood-name">Furia de Pattala</span>
+          <span class="mood-desc">Música épica de combate</span>
+          <span class="mood-tag">Loop · Sin copyright</span>
+        </button>
+        <button class="mood-btn" data-mood="sfx" onclick="selectMood(this)">
           <span class="mood-icon">💥</span>
-          <span class="mood-name">Impacto Brutal</span>
-          <span class="mood-desc">Golpe de combate</span>
+          <span class="mood-name">Pattala Sound Effect</span>
+          <span class="mood-desc">Sonido de pattada brutal</span>
           <span class="mood-tag">Sonido · Sin copyright</span>
         </button>
         <button class="mood-btn" data-mood="dark" onclick="selectMood(this)">
@@ -579,10 +585,21 @@ canvas#viz { display:block;width:100%;height:120px; }
         </div>
       </div>
       <div class="catalog-card">
-        <img src="images/impacto-brutal.jpg" alt="Impacto Brutal">
+        <img src="images/furia-de-pattala.jpg" alt="Furia de Pattala">
         <div class="catalog-body">
-          <div class="catalog-title">💥 Bestias: Génesis — Impacto Brutal</div>
-          <div class="catalog-desc">🐾 Golpe contundente y poderoso para ataques, habilidades y momentos de impacto.</div>
+          <div class="catalog-title">🥁 Bestias: Génesis — Furia de Pattala</div>
+          <div class="catalog-desc">🔥 Música épica de combate con tambores de guerra y bajo pesado. Loop sin copyright, ideal para combates y enfrentamientos.</div>
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+            <span class="catalog-badge">Escuchalo arriba ↑</span>
+            <span class="catalog-badge" style="color:var(--red);border-color:rgba(255,60,80,0.3);">$20 en BuiltByBit</span>
+          </div>
+        </div>
+      </div>
+      <div class="catalog-card">
+        <img src="images/pattala-sound-effect.jpg" alt="Pattala Sound Effect">
+        <div class="catalog-body">
+          <div class="catalog-title">💥 Bestias: Génesis — Pattala Sound Effect</div>
+          <div class="catalog-desc">🐾 Sonido de pattada brutal: golpe seco y contundente, 100% original. Ideal para combates, animaciones y NPCs.</div>
           <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
             <span class="catalog-badge">Escuchalo arriba ↑</span>
             <span class="catalog-badge" style="color:var(--red);border-color:rgba(255,60,80,0.3);">$20 en BuiltByBit</span>
@@ -608,6 +625,7 @@ let timerInterval = null;
 let seconds = 0;
 let animFrame = null;
 let dest = null;
+let trackAudio = null;
 
 // Layers active
 const layers = { melody:true, bass:true, drums:true, pad:true, arp:true };
@@ -632,9 +650,17 @@ const MOODS = {
     colors:['#0080ff','#00c8ff','#4040ff'],
   },
   impact: {
-    name:'Impacto Brutal', key:'—', time:'—', bpm:'—',
-    subtitle:'Golpe de Combate', tag:'Sonido · Sin copyright',
-    cover:'images/impacto-brutal.jpg',
+    name:'Furia de Pattala', key:'D frig', time:'4/4', bpm:92,
+    subtitle:'Música Épica de Combate', tag:'Loop · Sin copyright',
+    cover:'images/furia-de-pattala.jpg',
+    type:'track',
+    audio:'audio/pattala-musica-brutal.mp3',
+    colors:['#ff2a2a','#ff6a00','#ffffff'],
+  },
+  sfx: {
+    name:'Pattala Sound Effect', key:'—', time:'—', bpm:'—',
+    subtitle:'Sonido de Pattada Brutal', tag:'Sonido · Sin copyright',
+    cover:'images/pattala-sound-effect.jpg',
     type:'oneshot',
     audio:'audio/pattala-impacto-brutal.mp3',
     colors:['#ff2a2a','#ff6a00','#ffffff'],
@@ -741,6 +767,8 @@ function selectMood(el) {
   currentMood = el.dataset.mood;
   const m = MOODS[currentMood];
   const isOneshot = m.type === 'oneshot';
+  const isTrack = m.type === 'track';
+  const isFixed = isOneshot || isTrack;
 
   document.getElementById('info-mood').textContent = m.name;
   document.getElementById('info-key').textContent = m.key;
@@ -761,9 +789,9 @@ function selectMood(el) {
   const loopMinutes = document.getElementById('loopMinutes');
   const recBtn = document.getElementById('recBtn');
   if(!isPlaying) playBtn.textContent = isOneshot ? '💥 REPRODUCIR SONIDO' : '▶ GENERAR Y REPRODUCIR';
-  loopBtn.textContent = isOneshot ? '💾 Descargar Sonido (MP3)' : '💾 Guardar Loop (MP3)';
-  loopMinutes.disabled = isOneshot;
-  recBtn.disabled = isOneshot;
+  loopBtn.textContent = isOneshot ? '💾 Descargar Sonido (MP3)' : (isTrack ? '💾 Descargar Loop (MP3)' : '💾 Guardar Loop (MP3)');
+  loopMinutes.disabled = isFixed;
+  recBtn.disabled = isFixed;
 
   if(isPlaying && !isOneshot) { stopMusic(); startMusic(); }
 }
@@ -853,8 +881,19 @@ function stopViz() {
 
 // ─── MUSIC ENGINE ────────────────────────────────────────
 async function startMusic() {
-  await Tone.start();
   const m = MOODS[currentMood];
+  if(m.type === 'track') {
+    // Pista pre-renderizada (no generativa): se reproduce en loop
+    try {
+      trackAudio = new Audio(m.audio);
+      trackAudio.loop = true;
+      await trackAudio.play();
+    } catch(e) {
+      log('No se pudo reproducir '+m.audio+' — ¿subiste el archivo a la carpeta audio/?', 'warn');
+    }
+    return;
+  }
+  await Tone.start();
   Tone.getTransport().bpm.value = parseInt(document.getElementById('tempo').value);
 
   // master chain
@@ -962,6 +1001,7 @@ async function startMusic() {
 }
 
 function stopMusic() {
+  if(trackAudio) { try{trackAudio.pause();}catch(e){} trackAudio = null; }
   Tone.getTransport().stop();
   Tone.getTransport().cancel();
   Object.values(parts).forEach(p => { try{p.stop();p.dispose();}catch(e){} });
@@ -1190,7 +1230,7 @@ function encodeToneBufferToMp3(toneBuffer) {
 function downloadOneshotFile(m) {
   const a = document.createElement('a');
   a.href = m.audio;
-  a.download = 'pattala_impacto_brutal.mp3';
+  a.download = m.audio.split('/').pop();
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -1200,7 +1240,7 @@ function downloadOneshotFile(m) {
 async function saveLoopAsMp3() {
   if(isRendering) return;
   const m0 = MOODS[currentMood];
-  if(m0.type === 'oneshot') { downloadOneshotFile(m0); return; }
+  if(m0.type === 'oneshot' || m0.type === 'track') { downloadOneshotFile(m0); return; }
 
   const minutesInput = document.getElementById('loopMinutes');
   const minutes = Math.max(0.5, Math.min(10, parseFloat(minutesInput.value) || 2));
