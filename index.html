@@ -5,6 +5,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🎵 Lobby Music Generator — Dragón Primordial</title>
+<meta name="description" content="Escucha gratis los sonidos de Bestias: Génesis — música épica de combate, ambiente de lobby y efectos de impacto. Creados por Dragón Primordial.">
+<meta property="og:title" content="Bestias: Génesis — Catálogo de Sonidos">
+<meta property="og:description" content="Música épica de combate, ambiente de lobby y efectos de impacto. 100% original, sin copyright.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://dragonprimordial12-netizen.github.io/Lobby_Music_Generator/Imagen/Bestias_G%C3%A9nesis_Despertar%20de%20la%20Batalla.png">
+<meta name="twitter:card" content="summary_large_image">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.min.js"></script>
@@ -98,6 +104,24 @@ header {
   letter-spacing:0.04em;color:var(--cyan);margin-bottom:0.5rem;line-height:1.4;
 }
 .catalog-desc { font-size:0.75rem;color:var(--text);line-height:1.55; }
+.catalog-listen {
+  background:rgba(0,200,255,0.08);color:var(--cyan);border-color:rgba(0,200,255,0.4);
+  cursor:pointer;font-family:inherit;transition:all 0.2s;
+}
+.catalog-listen:hover { background:rgba(0,200,255,0.2);border-color:var(--cyan);transform:translateY(-1px); }
+.store-links { display:flex;gap:0.7rem;flex-wrap:wrap;justify-content:center;margin-top:0.8rem; }
+.store-btn {
+  font-family:'Orbitron',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.08em;
+  text-transform:uppercase;text-decoration:none;padding:0.75rem 1.3rem;
+  border:1px solid var(--border);color:var(--cyan);background:rgba(0,0,0,0.3);
+  clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);transition:all 0.2s;
+}
+.store-btn:hover { background:rgba(0,200,255,0.12);border-color:var(--cyan);color:#fff; }
+.store-btn.bbb { color:var(--gold);border-color:rgba(255,200,64,0.4); }
+.store-btn.bbb:hover { background:rgba(255,200,64,0.12);border-color:var(--gold); }
+.store-btn.yt { color:var(--red);border-color:rgba(255,60,80,0.4); }
+.store-btn.yt:hover { background:rgba(255,60,80,0.12);border-color:var(--red); }
+.store-note { text-align:center;font-size:0.68rem;color:var(--muted);margin-top:0.9rem;letter-spacing:0.03em; }
 .catalog-badge {
   display:inline-block;margin-top:0.6rem;font-size:0.55rem;
   letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);
@@ -380,7 +404,7 @@ canvas#viz { display:block;width:100%;height:120px; }
   <span class="logo">🎵 LOBBY<span> MUSIC GEN</span></span>
   <div style="display:flex;align-items:center;gap:0.6rem;">
     <a class="yt-badge" href="https://www.youtube.com/@Drag%C3%B3nPrimordial" target="_blank" rel="noopener">▶ YouTube</a>
-    <span class="header-badge">DRAGÓN PRIMORDIAL · v1.6</span>
+    <span class="header-badge">DRAGÓN PRIMORDIAL · v1.7</span>
   </div>
 </header>
 
@@ -563,50 +587,57 @@ canvas#viz { display:block;width:100%;height:120px; }
     <p class="panel-title">Catálogo de Sonidos — Bestias: Génesis</p>
     <div class="catalog-grid">
       <div class="catalog-card">
-        <img src="images/despertar-de-la-batalla.jpg" alt="Despertar de la Batalla">
+        <img data-mood-cover="epic" alt="Despertar de la Batalla" loading="lazy" decoding="async">
         <div class="catalog-body">
           <div class="catalog-title">🎵 Bestias: Génesis — Despertar de la Batalla</div>
           <div class="catalog-desc">🔥 Ambiente épico de combate para entrar en acción. Loop sin copyright, ideal para batallas y enfrentamientos.</div>
           <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
-            <span class="catalog-badge">Generalo arriba ↑</span>
+            <button class="catalog-badge catalog-listen" onclick="listenFromCatalog('epic')">▶ Escúchalo</button>
             <span class="catalog-badge" style="color:var(--red);border-color:rgba(255,60,80,0.3);">$20 en BuiltByBit</span>
           </div>
         </div>
       </div>
       <div class="catalog-card">
-        <img src="images/antes-de-la-batalla.jpg" alt="Antes de la Batalla">
+        <img data-mood-cover="mystical" alt="Antes de la Batalla" loading="lazy" decoding="async">
         <div class="catalog-body">
           <div class="catalog-title">🌅 Bestias: Génesis — Antes de la Batalla</div>
           <div class="catalog-desc">🌄 Ambiente épico de espera para el lobby. Una melodía que prepara al jugador para comenzar su aventura.</div>
           <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
-            <span class="catalog-badge">Generalo arriba ↑</span>
+            <button class="catalog-badge catalog-listen" onclick="listenFromCatalog('mystical')">▶ Escúchalo</button>
             <span class="catalog-badge" style="color:var(--red);border-color:rgba(255,60,80,0.3);">$20 en BuiltByBit</span>
           </div>
         </div>
       </div>
       <div class="catalog-card">
-        <img src="images/furia-de-pattala.jpg" alt="Furia de Pattala">
+        <img data-mood-cover="impact" alt="Furia de Pattala" loading="lazy" decoding="async">
         <div class="catalog-body">
           <div class="catalog-title">🥁 Bestias: Génesis — Furia de Pattala</div>
           <div class="catalog-desc">🔥 Música épica de combate con tambores de guerra y bajo pesado. Loop sin copyright, ideal para combates y enfrentamientos.</div>
           <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
-            <span class="catalog-badge">Escuchalo arriba ↑</span>
+            <button class="catalog-badge catalog-listen" onclick="listenFromCatalog('impact')">▶ Escúchalo</button>
             <span class="catalog-badge" style="color:var(--red);border-color:rgba(255,60,80,0.3);">$20 en BuiltByBit</span>
           </div>
         </div>
       </div>
       <div class="catalog-card">
-        <img src="images/pattala-sound-effect.jpg" alt="Pattala Sound Effect">
+        <img data-mood-cover="sfx" alt="Pattala Sound Effect" loading="lazy" decoding="async">
         <div class="catalog-body">
           <div class="catalog-title">💥 Bestias: Génesis — Pattala Sound Effect</div>
           <div class="catalog-desc">🐾 Sonido de pattada brutal: golpe seco y contundente, 100% original. Ideal para combates, animaciones y NPCs.</div>
           <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
-            <span class="catalog-badge">Escuchalo arriba ↑</span>
+            <button class="catalog-badge catalog-listen" onclick="listenFromCatalog('sfx')">▶ Escúchalo</button>
             <span class="catalog-badge" style="color:var(--red);border-color:rgba(255,60,80,0.3);">$20 en BuiltByBit</span>
           </div>
         </div>
       </div>
     </div>
+    <p class="panel-title" style="margin-top:1.6rem;">Dónde conseguirlos</p>
+    <div class="store-links">
+      <a class="store-btn bbb" href="https://builtbybit.com/creators/dragon-primordial.828779/" target="_blank" rel="noopener">🛒 BuiltByBit</a>
+      <a class="store-btn" href="https://dragonprimordial.itch.io/" target="_blank" rel="noopener">🎮 itch.io</a>
+      <a class="store-btn yt" href="https://www.youtube.com/@Drag%C3%B3nPrimordial" target="_blank" rel="noopener">▶ YouTube</a>
+    </div>
+    <p class="store-note">Escúchalos gratis aquí. Los archivos en WAV y MP3 para tu proyecto están en BuiltByBit e itch.io.</p>
     <div class="credit-line">
       🎥 Todo el audio de este catálogo es 100% original, creado por <strong>Dragón Primordial</strong> —
       <a href="https://www.youtube.com/@Drag%C3%B3nPrimordial" target="_blank" rel="noopener">YouTube</a>
@@ -636,11 +667,18 @@ let parts = {};
 let reverb, delay, vol;
 
 // Mood configs
+// ─── RUTAS DE ARCHIVOS (nueva estructura del repo) ────────
+// Si renombras o mueves un archivo, solo cambia estas líneas.
+const RUTA_IMG = 'Imagen/Bestias_Génesis_';
+const RUTA_MP3 = 'MP3/Bestias_Génesis_';
+
 const MOODS = {
   epic: {
-    name:'Despertar de la Batalla', key:'A min', time:'4/4', bpm:110,
+    name:'Despertar de la Batalla', key:'A min', time:'4/4', bpm:90,
     subtitle:'Ambiente Épico de Combate', tag:'Loop · Sin copyright',
-    cover:'images/despertar-de-la-batalla.jpg',
+    cover: RUTA_IMG+'Despertar de la Batalla.png',
+    type:'track',
+    audio: RUTA_MP3+'Despertar de la Batalla.mp3',
     scale:['A3','C4','D4','E4','G4','A4','C5','E5'],
     bassNotes:['A2','E2','C2','G2'],
     melodyRhythm:['8n','8n','4n','8n','8n','2n'],
@@ -652,17 +690,17 @@ const MOODS = {
   impact: {
     name:'Furia de Pattala', key:'D frig', time:'4/4', bpm:92,
     subtitle:'Música Épica de Combate', tag:'Loop · Sin copyright',
-    cover:'images/furia-de-pattala.jpg',
+    cover: RUTA_IMG+'Furia de Pattala.png',
     type:'track',
-    audio:'audio/pattala-musica-brutal.mp3',
+    audio: RUTA_MP3+'Furia de Pattala.mp3',
     colors:['#ff2a2a','#ff6a00','#ffffff'],
   },
   sfx: {
     name:'Pattala Sound Effect', key:'—', time:'—', bpm:'—',
     subtitle:'Sonido de Pattada Brutal', tag:'Sonido · Sin copyright',
-    cover:'images/pattala-sound-effect.jpg',
+    cover: RUTA_IMG+'Pattala Sound Effect.png',
     type:'oneshot',
-    audio:'audio/pattala-impacto-brutal.mp3',
+    audio: RUTA_MP3+'Pattala Sound Effect.mp3',
     colors:['#ff2a2a','#ff6a00','#ffffff'],
   },
   dark: {
@@ -701,7 +739,7 @@ const MOODS = {
   mystical: {
     name:'Antes de la Batalla', key:'C# min', time:'4/4', bpm:85,
     subtitle:'Ambiente Épico de Lobby', tag:'Loop · Sin copyright',
-    cover:'images/antes-de-la-batalla.jpg',
+    cover: RUTA_IMG+'Antes de la Batalla.png',
     scale:['C#4','E4','F#4','G#4','B4','C#5','E5','G#5'],
     bassNotes:['C#2','G#2','F#2','B2'],
     melodyRhythm:['4n','8n','4n','8n','2n','4n'],
@@ -788,12 +826,15 @@ function selectMood(el) {
   const loopBtn = document.getElementById('loopBtn');
   const loopMinutes = document.getElementById('loopMinutes');
   const recBtn = document.getElementById('recBtn');
-  if(!isPlaying) playBtn.textContent = isOneshot ? '💥 REPRODUCIR SONIDO' : '▶ GENERAR Y REPRODUCIR';
+  if(!isPlaying) playBtn.textContent = playLabel(m);
   loopBtn.textContent = isOneshot ? '💾 Descargar Sonido (MP3)' : (isTrack ? '💾 Descargar Loop (MP3)' : '💾 Guardar Loop (MP3)');
   loopMinutes.disabled = isFixed;
   recBtn.disabled = isFixed;
 
-  if(isPlaying && !isOneshot) { stopMusic(); startMusic(); }
+  if(isPlaying) {
+    if(isOneshot) stopPlayback();
+    else { stopMusic(); startMusic(); }
+  }
 }
 
 function updateCoverStrip(m) {
@@ -889,7 +930,7 @@ async function startMusic() {
       trackAudio.loop = true;
       await trackAudio.play();
     } catch(e) {
-      log('No se pudo reproducir '+m.audio+' — ¿subiste el archivo a la carpeta audio/?', 'warn');
+      log('No se pudo reproducir '+m.audio+' — revisa que el archivo exista en el repo.', 'warn');
     }
     return;
   }
@@ -1016,6 +1057,25 @@ function stopMusic() {
   parts = {}; synths = {}; vol=null; reverb=null; delay=null; dest=null;
 }
 
+function playLabel(m) {
+  if(m.type === 'oneshot') return '💥 REPRODUCIR SONIDO';
+  if(m.type === 'track') return '▶ REPRODUCIR LOOP';
+  return '▶ GENERAR Y REPRODUCIR';
+}
+
+function stopPlayback() {
+  const btn = document.getElementById('playBtn');
+  isPlaying = false;
+  btn.textContent = playLabel(MOODS[currentMood]);
+  btn.classList.remove('playing');
+  document.getElementById('vizStatus').classList.remove('hidden');
+  if(isRecording) toggleRecord();
+  stopViz();
+  stopMusic();
+  stopTimer();
+  log('Reproducción detenida.','warn');
+}
+
 async function togglePlay() {
   const m = MOODS[currentMood];
   if(m.type === 'oneshot') { playOneshotSound(m); return; }
@@ -1026,21 +1086,24 @@ async function togglePlay() {
     btn.textContent = '⏹ DETENER';
     btn.classList.add('playing');
     document.getElementById('vizStatus').classList.add('hidden');
-    log(`Generando: ${MOODS[currentMood].name} · ${MOODS[currentMood].key}`, 'ok');
+    log(`${m.type === 'track' ? 'Reproduciendo' : 'Generando'}: ${m.name} · ${m.key}`, 'ok');
     startViz();
     await startMusic();
     startTimer();
   } else {
-    isPlaying = false;
-    btn.textContent = '▶ GENERAR Y REPRODUCIR';
-    btn.classList.remove('playing');
-    document.getElementById('vizStatus').classList.remove('hidden');
-    if(isRecording) toggleRecord();
-    stopViz();
-    stopMusic();
-    stopTimer();
-    log('Reproducción detenida.','warn');
+    stopPlayback();
   }
+}
+
+// Botón "Escúchalo" del catálogo: selecciona el estilo, sube al reproductor y suena
+async function listenFromCatalog(key) {
+  const btn = document.querySelector('.mood-btn[data-mood="'+key+'"]');
+  if(!btn) return;
+  selectMood(btn);
+  window.scrollTo({ top:0, behavior:'smooth' });
+  const m = MOODS[key];
+  if(m.type === 'oneshot') { playOneshotSound(m); return; }
+  if(!isPlaying) await togglePlay();
 }
 
 function playOneshotSound(m) {
@@ -1298,9 +1361,19 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('info-key').textContent = m.key;
   document.getElementById('info-time').textContent = m.time;
   document.getElementById('info-bpm').textContent = m.bpm;
+  if(typeof m.bpm === 'number') {
+    document.getElementById('tempo').value = m.bpm;
+    document.getElementById('val-tempo').textContent = m.bpm;
+  }
+  document.querySelectorAll('[data-mood-cover]').forEach(img => { img.src = MOODS[img.dataset.moodCover].cover; });
   updateCoverStrip(m);
+  // Estado inicial de los controles según el tipo del estilo por defecto
+  const fixed = m.type === 'track' || m.type === 'oneshot';
+  document.getElementById('playBtn').textContent = playLabel(m);
+  document.getElementById('loopBtn').textContent = m.type === 'oneshot' ? '💾 Descargar Sonido (MP3)' : (m.type === 'track' ? '💾 Descargar Loop (MP3)' : '💾 Guardar Loop (MP3)');
+  document.getElementById('loopMinutes').disabled = fixed;
+  document.getElementById('recBtn').disabled = fixed;
   log('Sistema listo. Selecciona un estilo y presiona PLAY.', 'info');
-  log('Nuevo: Guardar Loop (MP3) exporta el estilo actual sin tener que reproducirlo.', 'ok');
 });
 </script>
 </body>
