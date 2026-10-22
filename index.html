@@ -480,6 +480,37 @@ canvas#viz { display:block;width:100%;height:120px; }
       </div>
     </div>
 
+    <!-- SONIDOS DE BESTIAS -->
+    <div class="panel">
+      <p class="panel-title">Sonidos de las Bestias</p>
+      <div class="mood-grid" id="beastGrid">
+        <button class="mood-btn" data-mood="lagarto" onclick="selectMood(this)">
+          <span class="mood-icon">🦎</span>
+          <span class="mood-name">Siseo del Lagarto</span>
+          <span class="mood-desc">Siseo + chasquido de lengua</span>
+          <span class="mood-tag">Sonido · Sin copyright</span>
+        </button>
+        <button class="mood-btn" data-mood="abeja" onclick="selectMood(this)">
+          <span class="mood-icon">🐝</span>
+          <span class="mood-name">Zumbido de la Abeja</span>
+          <span class="mood-desc">Aleteo + picotazo</span>
+          <span class="mood-tag">Sonido · Sin copyright</span>
+        </button>
+        <button class="mood-btn" data-mood="dragon_primordial" onclick="selectMood(this)">
+          <span class="mood-icon">🐉</span>
+          <span class="mood-name">Rugido del Dragón Primordial</span>
+          <span class="mood-desc">Rugido grave + bocanada de fuego</span>
+          <span class="mood-tag">Sonido · Sin copyright</span>
+        </button>
+        <button class="mood-btn" data-mood="escarabajo" onclick="selectMood(this)">
+          <span class="mood-icon">🪲</span>
+          <span class="mood-name">Escarabajo Bombardero</span>
+          <span class="mood-desc">Clics de mandíbula + explosión ácida</span>
+          <span class="mood-tag">Sonido · Sin copyright</span>
+        </button>
+      </div>
+    </div>
+
     <!-- PARAMS -->
     <div class="panel">
       <p class="panel-title">Parámetros</p>
@@ -672,6 +703,9 @@ let reverb, delay, vol;
 const RUTA_IMG = 'Imagen/Bestias_Génesis_';
 const RUTA_MP3 = 'MP3/Bestias_Génesis_';
 
+// Duración (segundos) de cada sonido de bestia — se usa para el render offline a MP3
+const DURACION_BESTIA = { lagarto:1.3, abeja:1.2, dragon:2.1, escarabajo:1.3 };
+
 const MOODS = {
   epic: {
     name:'Despertar de la Batalla', key:'A min', time:'4/4', bpm:90,
@@ -702,6 +736,31 @@ const MOODS = {
     type:'oneshot',
     audio: RUTA_MP3+'Pattala Sound Effect.mp3',
     colors:['#ff2a2a','#ff6a00','#ffffff'],
+  },
+  // ── Sonidos de Bestias: 100% sintetizados por código con Tone.js, sin archivos de audio ──
+  lagarto: {
+    name:'Siseo del Lagarto', key:'—', time:'—', bpm:'—',
+    subtitle:'Sonido de Bestia · Lagarto', tag:'Sonido · Sin copyright',
+    type:'creature', beast:'lagarto',
+    colors:['#20d888','#0fae6e','#063d28'],
+  },
+  abeja: {
+    name:'Zumbido de la Abeja', key:'—', time:'—', bpm:'—',
+    subtitle:'Sonido de Bestia · Abeja', tag:'Sonido · Sin copyright',
+    type:'creature', beast:'abeja',
+    colors:['#ffd166','#ff9d00','#2a2000'],
+  },
+  dragon_primordial: {
+    name:'Rugido del Dragón Primordial', key:'—', time:'—', bpm:'—',
+    subtitle:'Sonido de Bestia · Dragón Primordial', tag:'Sonido · Sin copyright',
+    type:'creature', beast:'dragon',
+    colors:['#ff4d4d','#ff8c00','#300505'],
+  },
+  escarabajo: {
+    name:'Explosión del Escarabajo Bombardero', key:'—', time:'—', bpm:'—',
+    subtitle:'Sonido de Bestia · Escarabajo Bombardero', tag:'Sonido · Sin copyright',
+    type:'creature', beast:'escarabajo',
+    colors:['#9fd84a','#5a8f1f','#1a2a05'],
   },
   dark: {
     name:'Cripta de las Sombras', key:'D min', time:'3/4', bpm:72,
@@ -806,7 +865,8 @@ function selectMood(el) {
   const m = MOODS[currentMood];
   const isOneshot = m.type === 'oneshot';
   const isTrack = m.type === 'track';
-  const isFixed = isOneshot || isTrack;
+  const isCreature = m.type === 'creature';
+  const isFixed = isOneshot || isTrack || isCreature;
 
   document.getElementById('info-mood').textContent = m.name;
   document.getElementById('info-key').textContent = m.key;
@@ -827,7 +887,7 @@ function selectMood(el) {
   const loopMinutes = document.getElementById('loopMinutes');
   const recBtn = document.getElementById('recBtn');
   if(!isPlaying) playBtn.textContent = playLabel(m);
-  loopBtn.textContent = isOneshot ? '💾 Descargar Sonido (MP3)' : (isTrack ? '💾 Descargar Loop (MP3)' : '💾 Guardar Loop (MP3)');
+  loopBtn.textContent = (isOneshot || isCreature) ? '💾 Descargar Sonido (MP3)' : (isTrack ? '💾 Descargar Loop (MP3)' : '💾 Guardar Loop (MP3)');
   loopMinutes.disabled = isFixed;
   recBtn.disabled = isFixed;
 
@@ -1059,6 +1119,7 @@ function stopMusic() {
 
 function playLabel(m) {
   if(m.type === 'oneshot') return '💥 REPRODUCIR SONIDO';
+  if(m.type === 'creature') return '🔊 REPRODUCIR SONIDO';
   if(m.type === 'track') return '▶ REPRODUCIR LOOP';
   return '▶ GENERAR Y REPRODUCIR';
 }
@@ -1079,6 +1140,7 @@ function stopPlayback() {
 async function togglePlay() {
   const m = MOODS[currentMood];
   if(m.type === 'oneshot') { playOneshotSound(m); return; }
+  if(m.type === 'creature') { playCreatureSound(m); return; }
 
   const btn = document.getElementById('playBtn');
   if(!isPlaying) {
@@ -1116,6 +1178,23 @@ function playOneshotSound(m) {
   setTimeout(() => {
     if(currentMood === moodKeyAtPlay) status.textContent = '— PRESIONA PLAY —';
   }, 1500);
+}
+
+// Reproduce en vivo el sonido sintetizado de una bestia (sin archivo de audio)
+async function playCreatureSound(m) {
+  const moodKeyAtPlay = currentMood;
+  await Tone.start();
+  const limiter = new Tone.Limiter(-2).toDestination();
+  const reverb = await buildCreatureSound(m.beast, limiter);
+  const status = document.getElementById('vizStatus');
+  status.textContent = '🔊 REPRODUCIENDO...';
+  log(`Reproduciendo: ${m.name}`, 'ok');
+  const durMs = (DURACION_BESTIA[m.beast] + 0.4) * 1000;
+  setTimeout(() => {
+    if(currentMood === moodKeyAtPlay) status.textContent = '— PRESIONA PLAY —';
+    try{ reverb.dispose(); }catch(e){}
+    try{ limiter.dispose(); }catch(e){}
+  }, durMs);
 }
 
 // ─── TIMER ──────────────────────────────────────────────
@@ -1259,6 +1338,175 @@ async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetR
   Tone.getTransport().start();
 }
 
+// ─── SONIDOS DE BESTIAS (100% Tone.js, sin archivos de audio) ───
+// Un pequeño reverb corto les da cuerpo; cada bestia arma su propio
+// diseño de sonido y lo conecta a ese reverb, que a su vez va a "dest"
+// (el Limiter de la reproducción en vivo, o el Limiter offline del MP3).
+async function buildCreatureSound(beastKey, dest) {
+  const reverb = new Tone.Reverb({ decay:1.4, preDelay:0.01, wet:0.22 });
+  await reverb.generate();
+  reverb.connect(dest);
+  const t0 = Tone.now() + 0.05;
+  if(beastKey === 'lagarto') buildLagartoSound(reverb, t0);
+  else if(beastKey === 'abeja') buildAbejaSound(reverb, t0);
+  else if(beastKey === 'dragon') buildDragonSound(reverb, t0);
+  else if(beastKey === 'escarabajo') buildEscarabajoSound(reverb, t0);
+  return reverb;
+}
+
+// 🦎 Lagarto — siseo de ruido rosa con barrido de filtro + chasquido de lengua agudo
+function buildLagartoSound(dest, t0) {
+  const hissNoise = new Tone.Noise('pink');
+  const hissFilter = new Tone.Filter({ type:'bandpass', frequency:1800, Q:1.4 });
+  const hissEnv = new Tone.AmplitudeEnvelope({ attack:0.03, decay:0.55, sustain:0.15, release:0.25 }).connect(dest);
+  hissNoise.chain(hissFilter, hissEnv);
+  hissNoise.start(t0);
+  hissEnv.triggerAttackRelease(0.75, t0);
+  hissFilter.frequency.setValueAtTime(1800, t0);
+  hissFilter.frequency.exponentialRampToValueAtTime(5200, t0 + 0.35);
+  hissFilter.frequency.exponentialRampToValueAtTime(900, t0 + 0.8);
+  hissNoise.stop(t0 + 0.85);
+
+  const snap = new Tone.Synth({
+    oscillator:{ type:'square' },
+    envelope:{ attack:0.001, decay:0.05, sustain:0, release:0.03 },
+    volume:-6
+  }).connect(dest);
+  const snapTime = t0 + 0.68;
+  snap.triggerAttack(880, snapTime);
+  snap.frequency.exponentialRampToValueAtTime(220, snapTime + 0.05);
+  snap.triggerRelease(snapTime + 0.06);
+}
+
+// 🐝 Abeja — oscilador con trémolo rápido simulando el aleteo + picotazo agudo con distorsión
+function buildAbejaSound(dest, t0) {
+  const buzzGain = new Tone.Gain(0);
+  const buzzTremolo = new Tone.Tremolo({ frequency:45, depth:0.6 }).start();
+  const buzzFilter = new Tone.Filter({ type:'lowpass', frequency:2200, Q:0.8 });
+  buzzGain.chain(buzzTremolo, buzzFilter, dest);
+  const buzzOsc = new Tone.Oscillator({ type:'sawtooth', frequency:190 }).connect(buzzGain);
+  buzzOsc.start(t0);
+  buzzGain.gain.setValueAtTime(0, t0);
+  buzzGain.gain.linearRampToValueAtTime(0.5, t0 + 0.12);
+  buzzOsc.frequency.setValueAtTime(190, t0);
+  buzzOsc.frequency.linearRampToValueAtTime(240, t0 + 0.5);
+  buzzGain.gain.linearRampToValueAtTime(0, t0 + 0.95);
+  buzzOsc.stop(t0 + 1.0);
+
+  const stingDist = new Tone.Distortion(0.3).connect(dest);
+  const sting = new Tone.Synth({
+    oscillator:{ type:'square' },
+    envelope:{ attack:0.002, decay:0.12, sustain:0, release:0.05 },
+    volume:-10
+  }).connect(stingDist);
+  const stingTime = t0 + 0.78;
+  sting.triggerAttack(1046.5, stingTime);
+  sting.frequency.exponentialRampToValueAtTime(1568, stingTime + 0.1);
+  sting.triggerRelease(stingTime + 0.12);
+}
+
+// 🐉 Dragón Primordial — rugido grave descendente (2 osciladores) + bocanada de fuego + brasas
+function buildDragonSound(dest, t0) {
+  const roarGain = new Tone.Gain(0);
+  const roarDist = new Tone.Distortion(0.3);
+  const roarFilter = new Tone.Filter({ type:'lowpass', frequency:1100, Q:0.9 });
+  roarGain.chain(roarFilter, roarDist, dest);
+  const roarOsc = new Tone.Oscillator({ type:'sawtooth', frequency:150 }).connect(roarGain);
+  const roarSub = new Tone.Oscillator({ type:'square', frequency:76 }).connect(roarGain);
+  roarOsc.start(t0); roarSub.start(t0);
+  roarGain.gain.setValueAtTime(0, t0);
+  roarGain.gain.linearRampToValueAtTime(0.55, t0 + 0.15);
+  roarOsc.frequency.exponentialRampToValueAtTime(70, t0 + 1.3);
+  roarSub.frequency.exponentialRampToValueAtTime(35, t0 + 1.3);
+  roarGain.gain.linearRampToValueAtTime(0, t0 + 1.75);
+  roarOsc.stop(t0 + 1.8); roarSub.stop(t0 + 1.8);
+
+  const fireNoise = new Tone.Noise('brown');
+  const fireFilter = new Tone.Filter({ type:'bandpass', frequency:3200, Q:1 });
+  const fireEnv = new Tone.AmplitudeEnvelope({ attack:0.3, decay:0.9, sustain:0.1, release:0.3 }).connect(dest);
+  fireNoise.chain(fireFilter, fireEnv);
+  fireNoise.start(t0 + 0.25);
+  fireEnv.triggerAttackRelease(1.1, t0 + 0.25);
+  fireFilter.frequency.setValueAtTime(3200, t0 + 0.3);
+  fireFilter.frequency.exponentialRampToValueAtTime(400, t0 + 1.5);
+  fireNoise.stop(t0 + 1.7);
+
+  const embers = new Tone.MetalSynth({
+    frequency:800, harmonicity:6.1, modulationIndex:24, resonance:3200, octaves:1.2,
+    envelope:{ attack:0.001, decay:0.1, release:0.05 }, volume:-20
+  }).connect(dest);
+  embers.triggerAttackRelease('16n', t0 + 1.55);
+  embers.triggerAttackRelease('16n', t0 + 1.68);
+}
+
+// 🪲 Escarabajo Bombardero — clics de mandíbula metálicos + golpe sub + estallido ácido con filtro
+function buildEscarabajoSound(dest, t0) {
+  const clicks = new Tone.MetalSynth({
+    frequency:950, harmonicity:3.2, modulationIndex:18, resonance:2400, octaves:1,
+    envelope:{ attack:0.001, decay:0.035, release:0.01 }, volume:-14
+  }).connect(dest);
+  [0, 0.09, 0.17, 0.24, 0.3].forEach(dt => clicks.triggerAttackRelease('32n', t0 + dt));
+
+  const popKick = new Tone.MembraneSynth({
+    pitchDecay:0.05, octaves:5,
+    envelope:{ attack:0.001, decay:0.25, sustain:0, release:0.1 }, volume:-6
+  }).connect(dest);
+  popKick.triggerAttackRelease('C1', '8n', t0 + 0.42);
+
+  const blastDist = new Tone.Distortion(0.4).connect(dest);
+  const blastFilter = new Tone.Filter({ type:'bandpass', frequency:3800, Q:0.9 }).connect(blastDist);
+  const blastEnv = new Tone.AmplitudeEnvelope({ attack:0.002, decay:0.4, sustain:0, release:0.2 }).connect(blastFilter);
+  const blastNoise = new Tone.Noise('white').connect(blastEnv);
+  blastNoise.start(t0 + 0.42);
+  blastEnv.triggerAttackRelease(0.5, t0 + 0.42);
+  blastFilter.frequency.setValueAtTime(3800, t0 + 0.42);
+  blastFilter.frequency.exponentialRampToValueAtTime(500, t0 + 0.85);
+  blastNoise.stop(t0 + 0.95);
+}
+
+// Renderiza el sonido de una bestia offline (Tone.Offline) y lo descarga como MP3 real
+async function renderCreatureSoundMp3(m) {
+  if(isRendering) return;
+  const btn = document.getElementById('loopBtn');
+  const originalText = btn.textContent;
+  isRendering = true;
+  btn.disabled = true;
+  btn.textContent = '⏳ RENDERIZANDO...';
+  log(`Renderizando sonido — ${m.name}...`, 'warn');
+
+  try {
+    await Tone.start();
+    const duracion = DURACION_BESTIA[m.beast] + 0.5;
+    const buffer = await Tone.Offline(async () => {
+      const oLimiter = new Tone.Limiter(-1);
+      oLimiter.connect(Tone.getDestination());
+      await buildCreatureSound(m.beast, oLimiter);
+    }, duracion);
+
+    btn.textContent = '⏳ CODIFICANDO MP3...';
+    log('Render completo. Codificando a MP3...', 'warn');
+
+    const mp3Blob = encodeToneBufferToMp3(buffer);
+    const url = URL.createObjectURL(mp3Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const slug = m.name.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+    a.download = `${slug}_bestias_genesis.mp3`;
+    a.click();
+    URL.revokeObjectURL(url);
+    log(`Sonido guardado: ${a.download}`, 'ok');
+  } catch(e) {
+    console.error(e);
+    log('Error al generar el sonido: '+e.message, 'warn');
+  } finally {
+    isRendering = false;
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
 function encodeToneBufferToMp3(toneBuffer) {
   const sampleRate = toneBuffer.sampleRate;
   const left = toneBuffer.getChannelData(0);
@@ -1304,6 +1552,7 @@ async function saveLoopAsMp3() {
   if(isRendering) return;
   const m0 = MOODS[currentMood];
   if(m0.type === 'oneshot' || m0.type === 'track') { downloadOneshotFile(m0); return; }
+  if(m0.type === 'creature') { await renderCreatureSoundMp3(m0); return; }
 
   const minutesInput = document.getElementById('loopMinutes');
   const minutes = Math.max(0.5, Math.min(10, parseFloat(minutesInput.value) || 2));
@@ -1368,9 +1617,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-mood-cover]').forEach(img => { img.src = MOODS[img.dataset.moodCover].cover; });
   updateCoverStrip(m);
   // Estado inicial de los controles según el tipo del estilo por defecto
-  const fixed = m.type === 'track' || m.type === 'oneshot';
+  const fixed = m.type === 'track' || m.type === 'oneshot' || m.type === 'creature';
   document.getElementById('playBtn').textContent = playLabel(m);
-  document.getElementById('loopBtn').textContent = m.type === 'oneshot' ? '💾 Descargar Sonido (MP3)' : (m.type === 'track' ? '💾 Descargar Loop (MP3)' : '💾 Guardar Loop (MP3)');
+  document.getElementById('loopBtn').textContent = (m.type === 'oneshot' || m.type === 'creature') ? '💾 Descargar Sonido (MP3)' : (m.type === 'track' ? '💾 Descargar Loop (MP3)' : '💾 Guardar Loop (MP3)');
   document.getElementById('loopMinutes').disabled = fixed;
   document.getElementById('recBtn').disabled = fixed;
   log('Sistema listo. Selecciona un estilo y presiona PLAY.', 'info');
