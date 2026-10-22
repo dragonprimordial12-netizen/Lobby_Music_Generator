@@ -688,6 +688,10 @@ let seconds = 0;
 let animFrame = null;
 let dest = null;
 let trackAudio = null;
+let masterLimiter = null;
+let creatureSession = null;
+let creatureEndTimer = null;
+let isStarting = false;
 
 // Layers active
 const layers = { melody:true, bass:true, drums:true, pad:true, arp:true };
@@ -859,6 +863,9 @@ function log(msg, cls='') {
 }
 
 function selectMood(el) {
+  if(isRendering || isStarting) return;
+  // Detener primero también cancela sonidos breves y sus temporizadores.
+  if(isPlaying) stopPlayback();
   document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   currentMood = el.dataset.mood;
@@ -891,10 +898,6 @@ function selectMood(el) {
   loopMinutes.disabled = isFixed;
   recBtn.disabled = isFixed;
 
-  if(isPlaying) {
-    if(isOneshot) stopPlayback();
-    else { stopMusic(); startMusic(); }
-  }
 }
 
 function updateCoverStrip(m) {
@@ -908,6 +911,7 @@ function updateCoverStrip(m) {
 }
 
 function updateParam(param, val) {
+  if(isRendering || isStarting) return;
   document.getElementById('val-'+param).textContent = val;
   if(param==='tempo') {
     Tone.getTransport().bpm.value = parseInt(val);
@@ -919,6 +923,7 @@ function updateParam(param, val) {
 }
 
 function toggleLayer(el) {
+  if(isRendering || isStarting) return;
   const layer = el.dataset.layer;
   layers[layer] = !layers[layer];
   el.classList.toggle('on', layers[layer]);
@@ -990,7 +995,7 @@ async function startMusic() {
       trackAudio.loop = true;
       await trackAudio.play();
     } catch(e) {
-      log('No se pudo reproducir '+m.audio+' — revisa que el archivo exista en el repo.', 'warn');
+      throw new Error('No se pudo reproducir '+m.audio+' — revisa que el archivo exista en el repo.');
     }
     return;
   }
@@ -1002,6 +1007,7 @@ async function startMusic() {
   reverb = new Tone.Reverb({ decay:3.5, preDelay:0.1, wet:parseFloat(document.getElementById('reverb').value)/10 });
   delay = new Tone.FeedbackDelay({ delayTime:'8n', feedback:0.25, wet:parseFloat(document.getElementById('delay').value)/10 });
   const limiter = new Tone.Limiter(-3);
+  masterLimiter = limiter;
   await reverb.generate();
 
   // destination
@@ -1035,6 +1041,7 @@ async function startMusic() {
     if(m.distortion) {
       const bassDist = new Tone.Distortion(m.distortion).connect(vol);
       bassSynth.connect(bassDist);
+      synths.bassDist = bassDist;
     } else {
       bassSynth.connect(vol);
     }
@@ -1076,7 +1083,7 @@ async function startMusic() {
       const idx = di % pat.length;
       if(pat[idx]) kick.triggerAttackRelease('C1','8n',time);
       if(pat[(idx+4)%pat.length]) snare.triggerAttackRelease('8n',time);
-      if(di%2===0) hihat.triggerAttackRelease('32n',time);
+      if(di%2===0) hihat.triggerAttackRelease(400, '32n', time);
       di++;
     }, [...Array(16).keys()], '16n');
     parts.drums.start(0);
@@ -1102,6 +1109,12 @@ async function startMusic() {
 }
 
 function stopMusic() {
+  clearTimeout(creatureEndTimer);
+  creatureEndTimer = null;
+  if(creatureSession) {
+    creatureSession.dispose();
+    creatureSession = null;
+  }
   if(trackAudio) { try{trackAudio.pause();}catch(e){} trackAudio = null; }
   Tone.getTransport().stop();
   Tone.getTransport().cancel();
@@ -1111,6 +1124,8 @@ function stopMusic() {
       Object.values(s).forEach(x => { try{x.dispose();}catch(e){} });
     } else { try{s.dispose();}catch(e){} }
   });
+  if(masterLimiter) { try{masterLimiter.dispose();}catch(e){} masterLimiter = null; }
+  if(dest && dest.stream) dest.stream.getTracks().forEach(track => track.stop());
   if(vol) { try{vol.dispose();}catch(e){} }
   if(reverb) { try{reverb.dispose();}catch(e){} }
   if(delay) { try{delay.dispose();}catch(e){} }
@@ -1129,6 +1144,7 @@ function stopPlayback() {
   isPlaying = false;
   btn.textContent = playLabel(MOODS[currentMood]);
   btn.classList.remove('playing');
+  document.getElementById('vizStatus').textContent = '— PRESIONA PLAY —';
   document.getElementById('vizStatus').classList.remove('hidden');
   if(isRecording) toggleRecord();
   stopViz();
@@ -1138,22 +1154,30 @@ function stopPlayback() {
 }
 
 async function togglePlay() {
+  if(isRendering || isStarting) return;
+  if(isPlaying) { stopPlayback(); return; }
   const m = MOODS[currentMood];
-  if(m.type === 'oneshot') { playOneshotSound(m); return; }
-  if(m.type === 'creature') { playCreatureSound(m); return; }
+  if(m.type === 'oneshot') { await playOneshotSound(m); return; }
+  if(m.type === 'creature') { await playCreatureSound(m); return; }
 
   const btn = document.getElementById('playBtn');
-  if(!isPlaying) {
+  isStarting = true;
+  setAudioControlsBusy(true);
+  try {
+    await startMusic();
     isPlaying = true;
     btn.textContent = '⏹ DETENER';
     btn.classList.add('playing');
     document.getElementById('vizStatus').classList.add('hidden');
     log(`${m.type === 'track' ? 'Reproduciendo' : 'Generando'}: ${m.name} · ${m.key}`, 'ok');
     startViz();
-    await startMusic();
     startTimer();
-  } else {
+  } catch(e) {
     stopPlayback();
+    log('No se pudo iniciar el audio: '+e.message, 'warn');
+  } finally {
+    isStarting = false;
+    setAudioControlsBusy(false);
   }
 }
 
@@ -1164,37 +1188,72 @@ async function listenFromCatalog(key) {
   selectMood(btn);
   window.scrollTo({ top:0, behavior:'smooth' });
   const m = MOODS[key];
-  if(m.type === 'oneshot') { playOneshotSound(m); return; }
+  if(m.type === 'oneshot') { await playOneshotSound(m); return; }
   if(!isPlaying) await togglePlay();
 }
 
-function playOneshotSound(m) {
-  const moodKeyAtPlay = currentMood;
-  const audio = new Audio(m.audio);
-  audio.play().catch(e => log('No se pudo reproducir: '+e.message, 'warn'));
-  const status = document.getElementById('vizStatus');
-  status.textContent = '💥 REPRODUCIENDO...';
-  log(`Reproduciendo: ${m.name}`, 'ok');
-  setTimeout(() => {
-    if(currentMood === moodKeyAtPlay) status.textContent = '— PRESIONA PLAY —';
-  }, 1500);
+async function playOneshotSound(m) {
+  if(isRendering || isStarting) return;
+  if(isPlaying) stopPlayback();
+  trackAudio = new Audio(m.audio);
+  const audio = trackAudio;
+  isStarting = true;
+  setAudioControlsBusy(true);
+  try {
+    await audio.play();
+    isPlaying = true;
+    document.getElementById('playBtn').textContent = '⏹ DETENER';
+    document.getElementById('playBtn').classList.add('playing');
+    document.getElementById('vizStatus').textContent = '💥 REPRODUCIENDO...';
+    log(`Reproduciendo: ${m.name}`, 'ok');
+    audio.onended = () => { if(trackAudio === audio) stopPlayback(); };
+    audio.onerror = () => {
+      if(trackAudio === audio) stopPlayback();
+      log('No se pudo reproducir el archivo de sonido.', 'warn');
+    };
+  } catch(e) {
+    stopPlayback();
+    log('No se pudo reproducir: '+e.message, 'warn');
+  } finally {
+    isStarting = false;
+    setAudioControlsBusy(false);
+  }
 }
 
-// Reproduce en vivo el sonido sintetizado de una bestia (sin archivo de audio)
+// Una sesión guarda y libera cada oscilador, filtro y efecto de la bestia.
 async function playCreatureSound(m) {
-  const moodKeyAtPlay = currentMood;
-  await Tone.start();
-  const limiter = new Tone.Limiter(-2).toDestination();
-  const reverb = await buildCreatureSound(m.beast, limiter);
-  const status = document.getElementById('vizStatus');
-  status.textContent = '🔊 REPRODUCIENDO...';
-  log(`Reproduciendo: ${m.name}`, 'ok');
-  const durMs = (DURACION_BESTIA[m.beast] + 0.4) * 1000;
-  setTimeout(() => {
-    if(currentMood === moodKeyAtPlay) status.textContent = '— PRESIONA PLAY —';
-    try{ reverb.dispose(); }catch(e){}
-    try{ limiter.dispose(); }catch(e){}
-  }, durMs);
+  if(isRendering || isStarting) return;
+  if(isPlaying) stopPlayback();
+  isStarting = true;
+  setAudioControlsBusy(true);
+  let limiter = null;
+  try {
+    await Tone.start();
+    limiter = new Tone.Limiter(-2).toDestination();
+    const sound = await buildCreatureSound(m.beast, limiter);
+    const session = {
+      dispose() {
+        sound.dispose();
+        limiter.dispose();
+      }
+    };
+    creatureSession = session;
+    isPlaying = true;
+    document.getElementById('playBtn').textContent = '⏹ DETENER';
+    document.getElementById('playBtn').classList.add('playing');
+    document.getElementById('vizStatus').textContent = '🔊 REPRODUCIENDO...';
+    log(`Reproduciendo: ${m.name}`, 'ok');
+    creatureEndTimer = setTimeout(() => {
+      if(creatureSession === session) stopPlayback();
+    }, (DURACION_BESTIA[m.beast] + 0.5) * 1000);
+  } catch(e) {
+    if(limiter) limiter.dispose();
+    stopPlayback();
+    log('No se pudo reproducir el sonido: '+e.message, 'warn');
+  } finally {
+    isStarting = false;
+    setAudioControlsBusy(false);
+  }
 }
 
 // ─── TIMER ──────────────────────────────────────────────
@@ -1214,7 +1273,7 @@ function stopTimer() {
 
 // ─── RECORDING ──────────────────────────────────────────
 function toggleRecord() {
-  if(!isPlaying) { log('Primero inicia la reproducción.','warn'); return; }
+  if(!isPlaying && !isRecording) { log('Primero inicia la reproducción.','warn'); return; }
   if(!isRecording) {
     if(!dest) { log('Sin destino de audio.','warn'); return; }
     recordedChunks = [];
@@ -1262,6 +1321,51 @@ function downloadAudio() {
 // completo (incluyendo capas y parámetros) en un contexto de audio
 // offline y lo codifica a MP3 real con lamejs, todo en el navegador.
 let isRendering = false;
+const audioControlStates = new Map();
+
+// Tone.Offline cambia temporalmente el contexto global: durante ese trabajo
+// se impide arrancar otro audio o modificar sus parámetros.
+function setAudioControlsBusy(busy) {
+  const controls = document.querySelectorAll('.mood-btn, .catalog-listen, .toggle-btn, #playBtn, #loopBtn, #recBtn, #dlBtn, input');
+  if(busy) {
+    controls.forEach(control => {
+      if(!audioControlStates.has(control)) audioControlStates.set(control, control.disabled);
+      control.disabled = true;
+    });
+  } else {
+    audioControlStates.forEach((disabled, control) => { control.disabled = disabled; });
+    audioControlStates.clear();
+    document.getElementById('dlBtn').disabled = !audioBlob;
+  }
+}
+
+async function renderCreatureBuffer(beastKey) {
+  const previousContext = Tone.getContext();
+  let limiter = null, sound = null;
+  try {
+    return await Tone.Offline(async () => {
+      limiter = new Tone.Limiter(-1).toDestination();
+      sound = await buildCreatureSound(beastKey, limiter);
+    }, DURACION_BESTIA[beastKey] + 0.5);
+  } finally {
+    if(sound) sound.dispose();
+    if(limiter) limiter.dispose();
+    Tone.setContext(previousContext);
+  }
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // La descarga debe haber empezado antes de revocar la URL.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 
 async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetRaw, delayWetRaw) {
   // Se ejecuta DENTRO del callback de Tone.Offline: Tone usa el
@@ -1324,7 +1428,7 @@ async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetR
       const idx = di % pat.length;
       if(pat[idx]) kick.triggerAttackRelease('C1','8n',time);
       if(pat[(idx+4)%pat.length]) snare.triggerAttackRelease('8n',time);
-      if(di%2===0) hihat.triggerAttackRelease('32n',time);
+      if(di%2===0) hihat.triggerAttackRelease(400, '32n', time);
       di++;
     }, [...Array(16).keys()], '16n').start(0);
   }
@@ -1341,16 +1445,11 @@ async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetR
   Tone.getTransport().start();
 }
 
-// ─── REVERB SIMPLE (sin Tone.Reverb.generate()) ──────────
-// Tone.Reverb.generate() arma su impulso haciendo SU PROPIO render
-// offline por dentro. Si eso se llama DESDE ADENTRO de otro
-// Tone.Offline (como al exportar un MP3), el offline anidado pisa
-// el reloj interno de Tone y dispara el error "Start time must be
-// strictly greater than previous start time" en CADA render.
-// Esta función arma el impulso con matemática pura (sin pasar por
-// ningún audio context para generarlo) y mezcla seco/húmedo a mano
-// con nodos nativos — así funciona igual en vivo o dentro de un
-// Tone.Offline, sin anidar nada.
+// ─── REVERB SIMPLE ──────────────────────────────────────
+// Un impulso generado por código evita iniciar otro render offline para
+// crear la reverberación. El bus sirve en reproducción y en exportación.
+// El error de los golpes metálicos se corrige pasando los tres argumentos
+// de MetalSynth en Tone.js 14: frecuencia, duración e instante de inicio.
 function crearReverbSimple(dest, decaySeg = 1.4, mezclaHumeda = 0.22) {
   const ctx = Tone.getContext().rawContext;
   const sr = ctx.sampleRate;
@@ -1393,19 +1492,35 @@ function crearReverbSimple(dest, decaySeg = 1.4, mezclaHumeda = 0.22) {
 // (el Limiter de la reproducción en vivo, o el Limiter offline del MP3).
 async function buildCreatureSound(beastKey, dest) {
   const reverb = crearReverbSimple(dest, 1.4, 0.22);
+  const nodes = [];
+  const guardar = node => { nodes.push(node); return node; };
+  const disposeReverb = reverb.dispose;
+  let disposed = false;
+  reverb.dispose = () => {
+    if(disposed) return;
+    disposed = true;
+    nodes.reverse().forEach(node => { try { node.dispose(); } catch(e) {} });
+    disposeReverb();
+  };
   const t0 = Tone.now() + 0.05;
-  if(beastKey === 'lagarto') buildLagartoSound(reverb, t0);
-  else if(beastKey === 'abeja') buildAbejaSound(reverb, t0);
-  else if(beastKey === 'dragon') buildDragonSound(reverb, t0);
-  else if(beastKey === 'escarabajo') buildEscarabajoSound(reverb, t0);
-  return reverb;
+  try {
+    if(beastKey === 'lagarto') buildLagartoSound(reverb, t0, guardar);
+    else if(beastKey === 'abeja') buildAbejaSound(reverb, t0, guardar);
+    else if(beastKey === 'dragon') buildDragonSound(reverb, t0, guardar);
+    else if(beastKey === 'escarabajo') buildEscarabajoSound(reverb, t0, guardar);
+    else throw new Error('Bestia desconocida: '+beastKey);
+    return reverb;
+  } catch(e) {
+    reverb.dispose();
+    throw e;
+  }
 }
 
 // 🦎 Lagarto — siseo de ruido rosa con barrido de filtro + chasquido de lengua agudo
-function buildLagartoSound(dest, t0) {
-  const hissNoise = new Tone.Noise('pink');
-  const hissFilter = new Tone.Filter({ type:'bandpass', frequency:1800, Q:1.4 });
-  const hissEnv = new Tone.AmplitudeEnvelope({ attack:0.03, decay:0.55, sustain:0.15, release:0.25 }).connect(dest);
+function buildLagartoSound(dest, t0, guardar) {
+  const hissNoise = guardar(new Tone.Noise('pink'));
+  const hissFilter = guardar(new Tone.Filter({ type:'bandpass', frequency:1800, Q:1.4 }));
+  const hissEnv = guardar(new Tone.AmplitudeEnvelope({ attack:0.03, decay:0.55, sustain:0.15, release:0.25 })).connect(dest);
   hissNoise.chain(hissFilter, hissEnv);
   hissNoise.start(t0);
   hissEnv.triggerAttackRelease(0.75, t0);
@@ -1414,11 +1529,11 @@ function buildLagartoSound(dest, t0) {
   hissFilter.frequency.exponentialRampToValueAtTime(900, t0 + 0.8);
   hissNoise.stop(t0 + 0.85);
 
-  const snap = new Tone.Synth({
+  const snap = guardar(new Tone.Synth({
     oscillator:{ type:'square' },
     envelope:{ attack:0.001, decay:0.05, sustain:0, release:0.03 },
     volume:-6
-  }).connect(dest);
+  })).connect(dest);
   const snapTime = t0 + 0.68;
   snap.triggerAttack(880, snapTime);
   snap.frequency.exponentialRampToValueAtTime(220, snapTime + 0.05);
@@ -1426,12 +1541,12 @@ function buildLagartoSound(dest, t0) {
 }
 
 // 🐝 Abeja — oscilador con trémolo rápido simulando el aleteo + picotazo agudo con distorsión
-function buildAbejaSound(dest, t0) {
-  const buzzGain = new Tone.Gain(0);
-  const buzzTremolo = new Tone.Tremolo({ frequency:45, depth:0.6 }).start();
-  const buzzFilter = new Tone.Filter({ type:'lowpass', frequency:2200, Q:0.8 });
+function buildAbejaSound(dest, t0, guardar) {
+  const buzzGain = guardar(new Tone.Gain(0));
+  const buzzTremolo = guardar(new Tone.Tremolo({ frequency:45, depth:0.6 })).start();
+  const buzzFilter = guardar(new Tone.Filter({ type:'lowpass', frequency:2200, Q:0.8 }));
   buzzGain.chain(buzzTremolo, buzzFilter, dest);
-  const buzzOsc = new Tone.Oscillator({ type:'sawtooth', frequency:190 }).connect(buzzGain);
+  const buzzOsc = guardar(new Tone.Oscillator({ type:'sawtooth', frequency:190 })).connect(buzzGain);
   buzzOsc.start(t0);
   buzzGain.gain.setValueAtTime(0, t0);
   buzzGain.gain.linearRampToValueAtTime(0.5, t0 + 0.12);
@@ -1440,12 +1555,12 @@ function buildAbejaSound(dest, t0) {
   buzzGain.gain.linearRampToValueAtTime(0, t0 + 0.95);
   buzzOsc.stop(t0 + 1.0);
 
-  const stingDist = new Tone.Distortion(0.3).connect(dest);
-  const sting = new Tone.Synth({
+  const stingDist = guardar(new Tone.Distortion(0.3)).connect(dest);
+  const sting = guardar(new Tone.Synth({
     oscillator:{ type:'square' },
     envelope:{ attack:0.002, decay:0.12, sustain:0, release:0.05 },
     volume:-10
-  }).connect(stingDist);
+  })).connect(stingDist);
   const stingTime = t0 + 0.78;
   sting.triggerAttack(1046.5, stingTime);
   sting.frequency.exponentialRampToValueAtTime(1568, stingTime + 0.1);
@@ -1453,13 +1568,13 @@ function buildAbejaSound(dest, t0) {
 }
 
 // 🐉 Dragón Primordial — rugido grave descendente (2 osciladores) + bocanada de fuego + brasas
-function buildDragonSound(dest, t0) {
-  const roarGain = new Tone.Gain(0);
-  const roarDist = new Tone.Distortion(0.3);
-  const roarFilter = new Tone.Filter({ type:'lowpass', frequency:1100, Q:0.9 });
+function buildDragonSound(dest, t0, guardar) {
+  const roarGain = guardar(new Tone.Gain(0));
+  const roarDist = guardar(new Tone.Distortion(0.3));
+  const roarFilter = guardar(new Tone.Filter({ type:'lowpass', frequency:1100, Q:0.9 }));
   roarGain.chain(roarFilter, roarDist, dest);
-  const roarOsc = new Tone.Oscillator({ type:'sawtooth', frequency:150 }).connect(roarGain);
-  const roarSub = new Tone.Oscillator({ type:'square', frequency:76 }).connect(roarGain);
+  const roarOsc = guardar(new Tone.Oscillator({ type:'sawtooth', frequency:150 })).connect(roarGain);
+  const roarSub = guardar(new Tone.Oscillator({ type:'square', frequency:76 })).connect(roarGain);
   roarOsc.start(t0); roarSub.start(t0);
   roarGain.gain.setValueAtTime(0, t0);
   roarGain.gain.linearRampToValueAtTime(0.55, t0 + 0.15);
@@ -1468,9 +1583,9 @@ function buildDragonSound(dest, t0) {
   roarGain.gain.linearRampToValueAtTime(0, t0 + 1.75);
   roarOsc.stop(t0 + 1.8); roarSub.stop(t0 + 1.8);
 
-  const fireNoise = new Tone.Noise('brown');
-  const fireFilter = new Tone.Filter({ type:'bandpass', frequency:3200, Q:1 });
-  const fireEnv = new Tone.AmplitudeEnvelope({ attack:0.3, decay:0.9, sustain:0.1, release:0.3 }).connect(dest);
+  const fireNoise = guardar(new Tone.Noise('brown'));
+  const fireFilter = guardar(new Tone.Filter({ type:'bandpass', frequency:3200, Q:1 }));
+  const fireEnv = guardar(new Tone.AmplitudeEnvelope({ attack:0.3, decay:0.9, sustain:0.1, release:0.3 })).connect(dest);
   fireNoise.chain(fireFilter, fireEnv);
   fireNoise.start(t0 + 0.25);
   fireEnv.triggerAttackRelease(1.1, t0 + 0.25);
@@ -1478,32 +1593,32 @@ function buildDragonSound(dest, t0) {
   fireFilter.frequency.exponentialRampToValueAtTime(400, t0 + 1.5);
   fireNoise.stop(t0 + 1.7);
 
-  const embers = new Tone.MetalSynth({
+  const embers = guardar(new Tone.MetalSynth({
     frequency:800, harmonicity:6.1, modulationIndex:24, resonance:3200, octaves:1.2,
     envelope:{ attack:0.001, decay:0.1, release:0.05 }, volume:-20
-  }).connect(dest);
-  embers.triggerAttackRelease('16n', t0 + 1.55);
-  embers.triggerAttackRelease('16n', t0 + 1.68);
+  })).connect(dest);
+  embers.triggerAttackRelease(800, '16n', t0 + 1.55);
+  embers.triggerAttackRelease(800, '16n', t0 + 1.68);
 }
 
 // 🪲 Escarabajo Bombardero — clics de mandíbula metálicos + golpe sub + estallido ácido con filtro
-function buildEscarabajoSound(dest, t0) {
-  const clicks = new Tone.MetalSynth({
+function buildEscarabajoSound(dest, t0, guardar) {
+  const clicks = guardar(new Tone.MetalSynth({
     frequency:950, harmonicity:3.2, modulationIndex:18, resonance:2400, octaves:1,
     envelope:{ attack:0.001, decay:0.035, release:0.01 }, volume:-14
-  }).connect(dest);
-  [0, 0.09, 0.17, 0.24, 0.3].forEach(dt => clicks.triggerAttackRelease('32n', t0 + dt));
+  })).connect(dest);
+  [0, 0.09, 0.17, 0.24, 0.3].forEach(dt => clicks.triggerAttackRelease(950, '32n', t0 + dt));
 
-  const popKick = new Tone.MembraneSynth({
+  const popKick = guardar(new Tone.MembraneSynth({
     pitchDecay:0.05, octaves:5,
     envelope:{ attack:0.001, decay:0.25, sustain:0, release:0.1 }, volume:-6
-  }).connect(dest);
+  })).connect(dest);
   popKick.triggerAttackRelease('C1', '8n', t0 + 0.42);
 
-  const blastDist = new Tone.Distortion(0.4).connect(dest);
-  const blastFilter = new Tone.Filter({ type:'bandpass', frequency:3800, Q:0.9 }).connect(blastDist);
-  const blastEnv = new Tone.AmplitudeEnvelope({ attack:0.002, decay:0.4, sustain:0, release:0.2 }).connect(blastFilter);
-  const blastNoise = new Tone.Noise('white').connect(blastEnv);
+  const blastDist = guardar(new Tone.Distortion(0.4)).connect(dest);
+  const blastFilter = guardar(new Tone.Filter({ type:'bandpass', frequency:3800, Q:0.9 })).connect(blastDist);
+  const blastEnv = guardar(new Tone.AmplitudeEnvelope({ attack:0.002, decay:0.4, sustain:0, release:0.2 })).connect(blastFilter);
+  const blastNoise = guardar(new Tone.Noise('white')).connect(blastEnv);
   blastNoise.start(t0 + 0.42);
   blastEnv.triggerAttackRelease(0.5, t0 + 0.42);
   blastFilter.frequency.setValueAtTime(3800, t0 + 0.42);
@@ -1513,43 +1628,35 @@ function buildEscarabajoSound(dest, t0) {
 
 // Renderiza el sonido de una bestia offline (Tone.Offline) y lo descarga como MP3 real
 async function renderCreatureSoundMp3(m) {
-  if(isRendering) return;
+  if(isRendering || isStarting) return;
+  if(isPlaying) stopPlayback();
   const btn = document.getElementById('loopBtn');
   const originalText = btn.textContent;
   isRendering = true;
-  btn.disabled = true;
+  setAudioControlsBusy(true);
   btn.textContent = '⏳ RENDERIZANDO...';
   log(`Renderizando sonido — ${m.name}...`, 'warn');
 
   try {
     await Tone.start();
-    const duracion = DURACION_BESTIA[m.beast] + 0.5;
-    const buffer = await Tone.Offline(async () => {
-      const oLimiter = new Tone.Limiter(-1);
-      oLimiter.connect(Tone.getDestination());
-      await buildCreatureSound(m.beast, oLimiter);
-    }, duracion);
+    const buffer = await renderCreatureBuffer(m.beast);
 
     btn.textContent = '⏳ CODIFICANDO MP3...';
     log('Render completo. Codificando a MP3...', 'warn');
 
     const mp3Blob = encodeToneBufferToMp3(buffer);
-    const url = URL.createObjectURL(mp3Blob);
-    const a = document.createElement('a');
-    a.href = url;
     const slug = m.name.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-    a.download = `${slug}_bestias_genesis.mp3`;
-    a.click();
-    URL.revokeObjectURL(url);
-    log(`Sonido guardado: ${a.download}`, 'ok');
+    const filename = `${slug}_bestias_genesis.mp3`;
+    downloadBlob(mp3Blob, filename);
+    log(`Sonido guardado: ${filename}`, 'ok');
   } catch(e) {
     console.error(e);
     log('Error al generar el sonido: '+e.message, 'warn');
   } finally {
     isRendering = false;
-    btn.disabled = false;
+    setAudioControlsBusy(false);
     btn.textContent = originalText;
   }
 }
@@ -1582,7 +1689,7 @@ function encodeToneBufferToMp3(toneBuffer) {
   const endBuf = encoder.flush();
   if(endBuf.length>0) mp3Chunks.push(endBuf);
 
-  return new Blob(mp3Chunks, {type:'audio/mp3'});
+  return new Blob(mp3Chunks, {type:'audio/mpeg'});
 }
 
 function downloadOneshotFile(m) {
@@ -1596,11 +1703,12 @@ function downloadOneshotFile(m) {
 }
 
 async function saveLoopAsMp3() {
-  if(isRendering) return;
+  if(isRendering || isStarting) return;
   const m0 = MOODS[currentMood];
   if(m0.type === 'oneshot' || m0.type === 'track') { downloadOneshotFile(m0); return; }
   if(m0.type === 'creature') { await renderCreatureSoundMp3(m0); return; }
 
+  if(isPlaying) stopPlayback();
   const minutesInput = document.getElementById('loopMinutes');
   const minutes = Math.max(0.5, Math.min(10, parseFloat(minutesInput.value) || 2));
   minutesInput.value = minutes;
@@ -1609,7 +1717,7 @@ async function saveLoopAsMp3() {
   const btn = document.getElementById('loopBtn');
   const originalText = btn.textContent;
   isRendering = true;
-  btn.disabled = true;
+  setAudioControlsBusy(true);
   btn.textContent = '⏳ RENDERIZANDO...';
   const m = MOODS[currentMood];
   log(`Renderizando loop de ${minutes} min — ${m.name}...`, 'warn');
@@ -1622,30 +1730,32 @@ async function saveLoopAsMp3() {
     const delayWetRaw = parseFloat(document.getElementById('delay').value);
     const mood = currentMood;
 
-    const buffer = await Tone.Offline(async () => {
-      await buildMoodInOfflineContext(mood, tempo, volumeDb, reverbWetRaw, delayWetRaw);
-    }, durationSec);
+    const previousContext = Tone.getContext();
+    let buffer;
+    try {
+      buffer = await Tone.Offline(async () => {
+        await buildMoodInOfflineContext(mood, tempo, volumeDb, reverbWetRaw, delayWetRaw);
+      }, durationSec);
+    } finally {
+      Tone.setContext(previousContext);
+    }
 
     btn.textContent = '⏳ CODIFICANDO MP3...';
     log('Render completo. Codificando a MP3...', 'warn');
 
     const mp3Blob = encodeToneBufferToMp3(buffer);
-    const url = URL.createObjectURL(mp3Blob);
-    const a = document.createElement('a');
-    a.href = url;
     const slug = m.name.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-    a.download = `${slug}_loop_${minutes}min_${Date.now()}.mp3`;
-    a.click();
-    URL.revokeObjectURL(url);
-    log(`Loop guardado: ${a.download}`, 'ok');
+    const filename = `${slug}_loop_${minutes}min_${Date.now()}.mp3`;
+    downloadBlob(mp3Blob, filename);
+    log(`Loop guardado: ${filename}`, 'ok');
   } catch(e) {
     console.error(e);
     log('Error al generar el loop: '+e.message, 'warn');
   } finally {
     isRendering = false;
-    btn.disabled = false;
+    setAudioControlsBusy(false);
     btn.textContent = originalText;
   }
 }
