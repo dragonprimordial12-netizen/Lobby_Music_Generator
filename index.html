@@ -1270,11 +1270,14 @@ async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetR
   Tone.getTransport().bpm.value = tempoBpm;
 
   const oVol = new Tone.Volume(volumeDb);
-  const oReverb = new Tone.Reverb({ decay:3.5, preDelay:0.1, wet:reverbWetRaw/10 });
   const oDelay = new Tone.FeedbackDelay({ delayTime:'8n', feedback:0.25, wet:delayWetRaw/10 });
   const oLimiter = new Tone.Limiter(-3);
-  await oReverb.generate();
-  oVol.chain(oReverb, oDelay, oLimiter, Tone.getDestination());
+  // Mismo motivo que en buildCreatureSound: nada de Tone.Reverb.generate()
+  // aquí adentro, porque esta función corre DENTRO de un Tone.Offline.
+  const oReverbBus = crearReverbSimple(oDelay, 3.5, reverbWetRaw / 10);
+  oVol.connect(oReverbBus);
+  oDelay.connect(oLimiter);
+  oLimiter.connect(Tone.getDestination());
 
   if(layers.pad) {
     const padSynth = new Tone.PolySynth(Tone.Synth, {
@@ -1338,14 +1341,58 @@ async function buildMoodInOfflineContext(moodKey, tempoBpm, volumeDb, reverbWetR
   Tone.getTransport().start();
 }
 
+// ─── REVERB SIMPLE (sin Tone.Reverb.generate()) ──────────
+// Tone.Reverb.generate() arma su impulso haciendo SU PROPIO render
+// offline por dentro. Si eso se llama DESDE ADENTRO de otro
+// Tone.Offline (como al exportar un MP3), el offline anidado pisa
+// el reloj interno de Tone y dispara el error "Start time must be
+// strictly greater than previous start time" en CADA render.
+// Esta función arma el impulso con matemática pura (sin pasar por
+// ningún audio context para generarlo) y mezcla seco/húmedo a mano
+// con nodos nativos — así funciona igual en vivo o dentro de un
+// Tone.Offline, sin anidar nada.
+function crearReverbSimple(dest, decaySeg = 1.4, mezclaHumeda = 0.22) {
+  const ctx = Tone.getContext().rawContext;
+  const sr = ctx.sampleRate;
+  const largo = Math.max(1, Math.floor(sr * decaySeg));
+  const impulso = ctx.createBuffer(2, largo, sr);
+  for (let canal = 0; canal < impulso.numberOfChannels; canal++) {
+    const datos = impulso.getChannelData(canal);
+    for (let i = 0; i < largo; i++) {
+      datos[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / largo, 2.4);
+    }
+  }
+
+  const convolver = ctx.createConvolver();
+  convolver.normalize = true;
+  convolver.buffer = impulso;
+
+  const bus = ctx.createGain();     // entrada: los sonidos secos se conectan aquí
+  const seco = ctx.createGain();
+  const humedo = ctx.createGain();
+  const salida = ctx.createGain();  // salida ya mezclada (seco + húmedo)
+  seco.gain.value = 1 - mezclaHumeda;
+  humedo.gain.value = mezclaHumeda;
+
+  bus.connect(seco);
+  seco.connect(salida);
+  bus.connect(convolver);
+  convolver.connect(humedo);
+  humedo.connect(salida);
+  Tone.connect(salida, dest); // nativo → nodo de Tone (ver Tone.connect)
+
+  bus.dispose = () => {
+    [bus, seco, humedo, salida, convolver].forEach(n => { try { n.disconnect(); } catch(e) {} });
+  };
+  return bus;
+}
+
 // ─── SONIDOS DE BESTIAS (100% Tone.js, sin archivos de audio) ───
 // Un pequeño reverb corto les da cuerpo; cada bestia arma su propio
 // diseño de sonido y lo conecta a ese reverb, que a su vez va a "dest"
 // (el Limiter de la reproducción en vivo, o el Limiter offline del MP3).
 async function buildCreatureSound(beastKey, dest) {
-  const reverb = new Tone.Reverb({ decay:1.4, preDelay:0.01, wet:0.22 });
-  await reverb.generate();
-  reverb.connect(dest);
+  const reverb = crearReverbSimple(dest, 1.4, 0.22);
   const t0 = Tone.now() + 0.05;
   if(beastKey === 'lagarto') buildLagartoSound(reverb, t0);
   else if(beastKey === 'abeja') buildAbejaSound(reverb, t0);
