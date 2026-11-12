@@ -534,6 +534,19 @@ canvas#viz { display:block;width:100%;height:120px; }
       </div>
     </div>
 
+    <!-- SONIDOS DE HABILIDADES -->
+    <div class="panel">
+      <p class="panel-title">Sonidos de Habilidades</p>
+      <div class="mood-grid" id="abilityGrid">
+        <button class="mood-btn" data-mood="carga_electrica" onclick="selectMood(this)">
+          <span class="mood-icon">⚡</span>
+          <span class="mood-name">Carga Eléctrica</span>
+          <span class="mood-desc">Zumbido + chisporroteo, en bucle</span>
+          <span class="mood-tag">Sonido · Sin copyright</span>
+        </button>
+      </div>
+    </div>
+
     <!-- PARAMS -->
     <div class="panel">
       <p class="panel-title">Parámetros</p>
@@ -731,7 +744,16 @@ const RUTA_IMG = 'Imagen/Bestias_Génesis_';
 const RUTA_MP3 = 'MP3/Bestias_Génesis_';
 
 // Duración (segundos) de cada sonido de bestia — se usa para el render offline a MP3
-const DURACION_BESTIA = { lagarto:1.3, abeja:1.2, dragon:2.1, escarabajo:1.3 };
+const DURACION_BESTIA = { lagarto:1.3, abeja:1.2, dragon:2.1, escarabajo:1.3, carga_electrica:2.0 };
+
+// Los sonidos de una sola bestia llevan reverb y necesitan 0.5s extra de colchón
+// para que la cola no se corte. Los sonidos de habilidad (pensados para loopear
+// en el motor del juego) no tienen reverb y deben exportarse con su duración
+// exacta — cualquier colchón dejaría un hueco de silencio al repetir el loop.
+const SONIDOS_SIN_COLA = new Set(['carga_electrica']);
+function duracionTotalSonido(beastKey) {
+  return DURACION_BESTIA[beastKey] + (SONIDOS_SIN_COLA.has(beastKey) ? 0 : 0.5);
+}
 
 const MOODS = {
   epic: {
@@ -788,6 +810,14 @@ const MOODS = {
     subtitle:'Sonido de Bestia · Escarabajo Bombardero', tag:'Sonido · Sin copyright',
     type:'creature', beast:'escarabajo',
     colors:['#9fd84a','#5a8f1f','#1a2a05'],
+  },
+  // ── Sonidos de Habilidades: mismo motor que las bestias, pero pensados para
+  // loopear en el motor del juego (sin reverb, duración exacta sin colchón) ──
+  carga_electrica: {
+    name:'Carga Eléctrica', key:'—', time:'—', bpm:'—',
+    subtitle:'Sonido de Habilidad · Carga Eléctrica', tag:'Sonido · Sin copyright',
+    type:'creature', beast:'carga_electrica',
+    colors:['#5fd4ff','#ffe066','#0a2a33'],
   },
   dark: {
     name:'Cripta de las Sombras', key:'D min', time:'3/4', bpm:72,
@@ -1268,7 +1298,7 @@ async function playCreatureSound(m) {
     log(`Reproduciendo: ${m.name}`, 'ok');
     creatureEndTimer = setTimeout(() => {
       if(creatureSession === session) stopPlayback();
-    }, (DURACION_BESTIA[m.beast] + 0.5) * 1000);
+    }, duracionTotalSonido(m.beast) * 1000);
   } catch(e) {
     if(limiter) limiter.dispose();
     stopPlayback();
@@ -1369,7 +1399,7 @@ async function renderCreatureBuffer(beastKey) {
     return await Tone.Offline(async () => {
       limiter = new Tone.Limiter(-1).toDestination();
       sound = await buildCreatureSound(beastKey, limiter);
-    }, DURACION_BESTIA[beastKey] + 0.5);
+    }, duracionTotalSonido(beastKey));
   } finally {
     if(sound) sound.dispose();
     if(limiter) limiter.dispose();
@@ -1514,6 +1544,31 @@ function crearReverbSimple(dest, decaySeg = 1.4, mezclaHumeda = 0.22) {
 // diseño de sonido y lo conecta a ese reverb, que a su vez va a "dest"
 // (el Limiter de la reproducción en vivo, o el Limiter offline del MP3).
 async function buildCreatureSound(beastKey, dest) {
+  // Los sonidos de habilidad (en bucle) no pasan por reverb: la cola del reverb
+  // dejaría un desajuste audible justo en el punto donde el loop se repite.
+  if(SONIDOS_SIN_COLA.has(beastKey)) {
+    const bus = new Tone.Gain(1).connect(dest);
+    const nodes = [];
+    const guardar = node => { nodes.push(node); return node; };
+    const disposeBus = bus.dispose.bind(bus);
+    let disposed = false;
+    bus.dispose = () => {
+      if(disposed) return;
+      disposed = true;
+      nodes.reverse().forEach(node => { try { node.dispose(); } catch(e) {} });
+      disposeBus();
+    };
+    const t0 = Tone.now();
+    try {
+      if(beastKey === 'carga_electrica') buildCargaElectricaSound(bus, t0, guardar);
+      else throw new Error('Sonido de habilidad desconocido: '+beastKey);
+      return bus;
+    } catch(e) {
+      bus.dispose();
+      throw e;
+    }
+  }
+
   const reverb = crearReverbSimple(dest, 1.4, 0.22);
   const nodes = [];
   const guardar = node => { nodes.push(node); return node; };
@@ -1647,6 +1702,51 @@ function buildEscarabajoSound(dest, t0, guardar) {
   blastFilter.frequency.setValueAtTime(3800, t0 + 0.42);
   blastFilter.frequency.exponentialRampToValueAtTime(500, t0 + 0.85);
   blastNoise.stop(t0 + 0.95);
+}
+
+// ⚡ Carga Eléctrica — zumbido continuo + chisporroteo, pensado para habilidades:
+// loopea en el motor del juego, así que arranca y termina sin cola ni fundidos,
+// y cada capa empieza y termina en el mismo valor para que el loop no deje clic.
+function buildCargaElectricaSound(dest, t0, guardar) {
+  const DURACION = 2.0;
+
+  // Zumbido base: dos osciladores desafinados (60/61 Hz — múltiplos de 0.5 Hz,
+  // así completan un número entero de ciclos en los 2s exactos del loop)
+  const humGain = guardar(new Tone.Gain(0.35));
+  const humFilter = guardar(new Tone.Filter({ type:'lowpass', frequency:900, Q:1 }));
+  humGain.chain(humFilter, dest);
+  const hum1 = guardar(new Tone.Oscillator({ type:'sawtooth', frequency:60 })).connect(humGain);
+  const hum2 = guardar(new Tone.Oscillator({ type:'sawtooth', frequency:61 })).connect(humGain);
+  hum1.start(t0); hum2.start(t0);
+  hum1.stop(t0 + DURACION); hum2.stop(t0 + DURACION);
+
+  // Chisporroteo: ruido blanco con un barrido de filtro que sube y baja dos
+  // veces, arrancando y cerrando en el mismo valor (1800 Hz) para que el loop
+  // no deje costura en la textura
+  const crackleGain = guardar(new Tone.Gain(0.12)).connect(dest);
+  const crackleFilter = guardar(new Tone.Filter({ type:'bandpass', frequency:1800, Q:2.5 })).connect(crackleGain);
+  const crackleNoise = guardar(new Tone.Noise('white')).connect(crackleFilter);
+  crackleNoise.start(t0);
+  crackleFilter.frequency.setValueAtTime(1800, t0);
+  crackleFilter.frequency.linearRampToValueAtTime(3600, t0 + 0.5);
+  crackleFilter.frequency.linearRampToValueAtTime(1000, t0 + 1.0);
+  crackleFilter.frequency.linearRampToValueAtTime(3600, t0 + 1.5);
+  crackleFilter.frequency.linearRampToValueAtTime(1800, t0 + DURACION);
+  crackleNoise.stop(t0 + DURACION);
+
+  // Chispazo agudo: parpadeos breves de volumen que arrancan y terminan en 0,
+  // así no dejan clic en el punto donde se repite el loop
+  const sizzleGain = guardar(new Tone.Gain(0)).connect(dest);
+  const sizzle = guardar(new Tone.Oscillator({ type:'square', frequency:2400 })).connect(sizzleGain);
+  sizzle.start(t0);
+  sizzleGain.gain.setValueAtTime(0, t0);
+  sizzleGain.gain.linearRampToValueAtTime(0.05, t0 + 0.2);
+  sizzleGain.gain.linearRampToValueAtTime(0, t0 + 0.4);
+  sizzleGain.gain.linearRampToValueAtTime(0.06, t0 + 0.9);
+  sizzleGain.gain.linearRampToValueAtTime(0, t0 + 1.1);
+  sizzleGain.gain.linearRampToValueAtTime(0.05, t0 + 1.6);
+  sizzleGain.gain.linearRampToValueAtTime(0, t0 + DURACION);
+  sizzle.stop(t0 + DURACION);
 }
 
 // Renderiza el sonido de una bestia offline (Tone.Offline) y lo descarga como MP3 real
